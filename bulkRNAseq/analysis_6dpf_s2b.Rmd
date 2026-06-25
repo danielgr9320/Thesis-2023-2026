@@ -1,0 +1,419 @@
+---
+title: "analysis_6dpf_s2b"
+output: html_document
+date: "2024-09-19"
+---
+
+```{r setup, include=FALSE}
+# Load required libraries
+library(DESeq2)
+library(tximport)
+library(ggplot2)
+library(vsn)
+library(pheatmap)
+library(RColorBrewer)
+library(tidyverse)
+library(KEGGREST)
+library(enrichplot)
+library(clusterProfiler)
+library(org.Dr.eg.db)
+library(DOSE)
+library(AnnotationHub)
+library(ensembldb)
+library(gridExtra)
+```
+
+```{r, eval=FALSE}
+#Use Annotationhub to get TxtoGENE_ID file, we used 112 version for salmon index
+ah <- AnnotationHub()
+query(ah, "EnsDb")
+edb <- ah[["AH116824"]]
+transcript_to_gene_112 <- transcripts(edb, columns = c("tx_id", "gene_id"), )
+
+transcript_to_gene_df <- as.data.frame(transcript_to_gene_112)
+ahDb <- query(ah, pattern = c("Danio rerio", "EnsDb", 112))
+tx_to_gene<-as.data.frame(transcript_to_gene_112)[, c("tx_id", "gene_id")]
+rownames(tx_to_gene) <- NULL
+head(tx_to_gene)
+write.csv(tx_to_gene, "/Volumes/CSDG/Daniel_Gray/BulkRNASeq/RNA_seq_6dpf_brains/Ensembl_mapped_files/tx_to_gene_ens112.csv", row.names = FALSE)
+
+```
+
+
+```{r}
+setwd("/Volumes/CSDG/Daniel_Gray/BulkRNASeq/RNA_seq_6dpf_brains/Ensembl_mapped_files")
+# Get a list of all directories (assuming each directory is a sample)
+samplea <- list.dirs(path = ".", full.names = FALSE, recursive = FALSE)
+
+samples<- samplea [c (13:16, 21:23)]
+
+# Create a data frame with sample information
+sampleTableder <- data.frame(
+  sample = samples,
+  condition = factor(sub(".*_(\\w+)_\\d+$", "\\1", samples))  # Adjust this based on your sample names
+)
+
+# Create a list of paths to the Salmon quant.sf files
+files <- file.path(samples, "quant.sf")
+names(files) <- samples
+
+## transcript to ensemblID
+tx_to_gene <- read.csv("/Volumes/CSDG/Daniel_Gray/BulkRNASeq/RNA_seq_6dpf_brains/Ensembl_mapped_files/tx_to_gene_ens112.csv", header=FALSE, stringsAsFactors=FALSE)  # You need to provide this file
+
+## contains ensid and gene symbol
+gene_to_ens<-read.delim("/Volumes/CSDG/Daniel_Gray/BulkRNASeq/RNA_seq_6dpf_brains/Genome_annotation_files/gene_to_ensembl_ens105.txt",header = T,row.names = 1)
+
+txi <- tximport(files, type = "salmon", tx2gene = tx_to_gene, ignoreTxVersion=TRUE)
+
+sampleTable<-read.csv("/Volumes/CSDG/Daniel_Gray/BulkRNASeq/RNA_seq_6dpf_brains/Genome_annotation_files/sample_sheet_s2b.csv",header=TRUE)
+sampleTable$batch <- c("1","2","3","4","1","3","4")
+
+```
+
+```{r}
+setwd("/Volumes/CSDG/Daniel_Gray/BulkRNASeq/RNA_seq_6dpf_brains/Plots")
+# Create DESeqDataSet object
+dds <- DESeqDataSetFromTximport(txi, sampleTable, ~condition + batch)
+dds <-DESeq(dds)
+
+# Perform variance stabilizing transformation
+vsd <- vst(dds, blind = TRUE)
+
+# Perform PCA
+pca_data <- plotPCA(vsd, intgroup = "condition", returnData = TRUE)
+
+# Create PCA plot
+pca_plot <- ggplot(pca_data, aes(x = PC1, y = PC2, color = condition), legendPosition = 'bottom') +
+  geom_point(size = 4) +
+  geom_text(aes(label = name), vjust = 2, hjust = 0.5,) +
+  scale_color_manual(values=c("#7030A0", "#9999FF")) +   
+  theme(axis.text=element_text(size=14),
+  axis.title=element_text(size=14,face="bold"))
+  
+
+# Save the plot
+ggsave("pca_plot_dan_s2b.pdf", pca_plot, width = 8, height = 6)
+
+# Print the plot to the screen
+print(pca_plot)
+rm(pca_plot)
+attr(pca_data, "percentVar")
+```
+
+```{r}
+head(assay(vsd))
+meanSdPlot(assay(vsd))
+
+sampleDists <- dist(t(assay(vsd)))
+
+sampleDistMatrix <- as.matrix(sampleDists)
+rownames(sampleDistMatrix) <- vsd$sample
+colnames(sampleDistMatrix) <- NULL
+colors <- colorRampPalette( rev(brewer.pal(9, "Purples")) )(255)
+heatmap<- pheatmap(sampleDistMatrix,
+         clustering_distance_rows=sampleDists,
+         clustering_distance_cols=sampleDists,
+         col=colors)
+rm(heatmap)
+```
+
+```{r}
+## generating DEG lists for S2b, Using the annotation file from before
+# s2b 
+res_s2b <- results(dds, contrast = c('condition', 'S2B', 'Wik_D'))
+# deduplicating DEG list
+res_s2b<- res_s2b[ order( res_s2b$log2FoldChange ), ]
+res_s2b_anno<-merge(as.data.frame(res_s2b),gene_to_ens, by = "row.names")
+write.csv(res_s2b_anno, "dge_S2b_WIK.csv")
+
+
+# thresholding s2b DEG list
+resSig_s2b <- subset(res_s2b_anno, padj < 0.05)
+write.csv(resSig_s2b, "sigs_S2b_WIK.csv")
+
+
+```
+
+
+```{r}
+#### s2b analysis
+
+# make list order by l2fc
+original_gene_list <- res_s2b_anno$log2FoldChange
+names(original_gene_list) <- res_s2b_anno$gene_name
+gene_list <- aggregate(original_gene_list ~ names(original_gene_list), FUN = mean)
+gene_list <- setNames(gene_list$original_gene_list,gene_list$`names(original_gene_list)`)
+gene_list = sort(gene_list, decreasing = TRUE)
+
+
+
+#use Clusterprofiler
+library(clusterProfiler)
+library(org.Dr.eg.db)
+library(DOSE)
+
+set.seed(395)
+
+gse <- gseGO(geneList=gene_list,
+             ont = "ALL",
+             keyType = "SYMBOL", 
+             minGSSize = 0,
+             verbose = TRUE, 
+             OrgDb = org.Dr.eg.db)
+
+
+pdf("S2BGSEAplots.pdf")
+
+dotplot(gse, showCategory=10, font.size = 14) + facet_grid(~ONTOLOGY)
+
+gset <- pairwise_termsim(gse)
+
+cnetplot(gset, foldChange = gene_list, showCategory = 9, size_category = 1, size_edge = 0.2, hilight = "none", node_label = "category")
+
+gseaplot(gse, by = "all", title = gse$Description[1], geneSetID = 1, font.size = 6)
+
+emapplot(gset)
+
+print(gse$Description)
+
+
+```
+
+```{r}
+pdf("S2BGSEAcnetplots.pdf")
+
+cnetplot(gset, foldChange = gene_list, showCategory = 9, size_category = 1, size_edge = 0.2, hilight = "none", node_label = "item")
+
+cnetplot(gset, foldChange = gene_list, showCategory = 9, size_category = 1, size_edge = 0.2, hilight = "none", node_label = "category")
+```
+
+
+```{r eval=FALSE}
+signif_gene_list <- resSig_s2b_anno$log2FoldChange
+names(signif_gene_list) <- resSig_s2b_anno$gene_name
+# We will lose some genes here because not all IDs will be converted
+ids<-bitr(names(signif_gene_list), fromType = "SYMBOL", toType = "ENTREZID", OrgDb=org.Dr.eg.db)
+df2 <- merge(ids,resSig_s2b_anno, by.x="SYMBOL", by.y="gene_name" )
+# remove the NA
+# Create a new column in df2 with the corresponding ENTREZ IDs
+# Create a vector of the gene universe
+kegg_gene_list <- df2$log2FoldChange
+# Name vector with ENTREZ ids
+names(kegg_gene_list) <- df2$ENTREZID
+# omit any NA values 
+kegg_gene_list<-na.omit(kegg_gene_list)
+# remove duplicated ids
+kegg_gene_list <- kegg_gene_list[!duplicated(names(kegg_gene_list))]
+# sort the list in decreasing order (required for clusterProfiler)
+kegg_gene_list = sort(kegg_gene_list, decreasing = TRUE)
+
+kegg_organism = "dre"
+kk2 <- gseKEGG(geneList     = kegg_gene_list,
+               organism     = kegg_organism,
+               minGSSize    = 0,
+               maxGSSize    = 800,
+               pAdjustMethod = "BH",
+               keyType       = "ncbi-geneid")
+
+```
+
+
+```{r}
+library(ggrepel)
+
+labelgenes <- c("stag1a","stag1b","stag2a","stag2b","smc1al","smc1a","smc3","rad21a")
+
+## Adding state to the dataframe for colour
+res_s2b_anno$state<- "NO"
+res_s2b_anno$state <- ifelse(res_s2b_anno$padj < 0.05, "sig. Padj",res_s2b_anno$state)
+res_s2b_anno$state <- ifelse(res_s2b_anno$padj < 0.05 & (res_s2b_anno$log2FoldChange < -1 | res_s2b_anno$log2FoldChange > 1), "sig. Padj & log2FC",res_s2b_anno$state)
+## adding an extra column for genes of interest
+res_s2b_anno$delabel <- ifelse(res_s2b_anno$gene_name %in% labelgenes, res_s2b_anno$gene_name, NA)
+# deduplicatign the sigs to get the numbers right
+resSig_s2b <- resSig_s2b %>%
+  distinct(gene_name, .keep_all = TRUE)
+
+# Theme stuff
+theme_set(theme_classic(base_size = 10) +
+            theme(
+              axis.title.y = element_text(margin = margin(0,5,0,0), size = rel(1.1), color = 'black'),
+              axis.title.x = element_text(hjust = 0.5, margin = margin(5,0,0,0), size = rel(1.1), color = 'black'),
+              plot.title = element_text(hjust = 0.5, face = "bold")
+            ))
+
+ggplot(data = res_s2b_anno,
+  aes(x = log2FoldChange, y = -log10(padj), col = state, label = delabel)) +
+  geom_vline(xintercept = c(-1, 1), col = "red", linetype = 'dashed') +
+  geom_hline(yintercept = -log10(0.05), col = "red", linetype = 'dashed') + 
+  geom_point(size = 0.5) +
+  coord_cartesian(ylim = c(0, 40), xlim = c(-12, 12)) +
+  scale_x_continuous(breaks = seq(-12, 12, 2)) +
+  scale_color_manual(values = c("grey","#00AFBB", "#bb0c00" )) +
+  geom_point(data = subset(res_s2b_anno, !is.na(delabel)), 
+             aes(x = log2FoldChange, y = -log10(padj)),
+             size = 1L, colour = "black") +
+  geom_text_repel(colour = "black", min.segment.length = 2) +
+  annotate("label", x = -9, y = 38, label = paste0(sum(resSig_s2b$log2FoldChange<0)," Down")) +
+  annotate("label", x = 9, y = 38, label = paste0(sum(resSig_s2b$log2FoldChange>0)," Up")) +
+  theme(legend.position="none")
+ggsave("Volcanos2b.pdf", dpi = "retina", width = 4, height = 4, units = "in")
+```
+
+
+```{r}
+
+# plotting cohesin genes
+genestoplot <- c("stag1a","stag1b","stag2a","stag2b","smc1al","smc1a","smc3","rad21a")
+
+cohesin_genes <- res_s2b_anno[res_s2b_anno$gene_name %in% genestoplot,]
+
+
+plots <- list()
+ for (x in 1:8) {
+temp <- plotCounts(dds, gene = cohesin_genes$Row.names[x], intgroup = "condition", returnData = T)
+plots[[x]]<-ggplot(temp, aes(x=condition, y=count, fill = condition)) +
+  geom_boxplot(outlier.shape = NA) + # Hide outliers
+  geom_jitter(width=0) + # Add points
+  ggtitle(cohesin_genes$gene_name[x])+
+  scale_fill_manual(values=c("#9999FF","grey"))+theme_classic()+theme(legend.position="none")
+ }
+ggsave("cohesingenes_s2b.pdf",grid.arrange(grobs=plots,ncol=2))
+```
+
+
+```{r}
+# plotting pcdh1g genes
+#genestoplot <- c("pcdh1g1","pcdh1g2","pcdh1g3","pcdh1gb2","pcdh1gc5","pcdh1g22","pcdh1g9","pcdh1g30","pcdh1g11","pcdh1gb9","pcdh1g18","pcdh1g11","pcdh1g22","pcdh1g9","pcdh1g33","pcdh1g26","pcdh1gc5","pcdh1gc6","pcdh1g29","pcdh1g30","pcdh1g31","pcdh1g32","pcdh1g33")
+
+# plotting pcdh2a genes
+genestoplot <- c("pcdh2ab2","pcdh2aa1","pcdh2ab1","pcdh2aa15","pcdh2ac","pcdh2ab12","pcdh2ab10","pcdh2ab8","pcdh2ab6","pcdh2ab5","pcdh2ab3","pcdh2aa15","pcdh2ab8","pcdh2ab9")
+
+cohesin_genes <- res_s2b_anno[res_s2b_anno$gene_name %in% genestoplot,]
+
+
+plots <- list()
+for (x in 1:13) {
+temp <- plotCounts(dds, gene = cohesin_genes$Row.names[x], intgroup = "condition", returnData = T)
+temp$condition <- factor(temp$condition, levels = c ("Wik_D","S2B"))
+plots[[x]]<-ggplot(temp, aes(x=condition, y=count, fill = condition)) +
+  geom_boxplot(outlier.shape = NA) + # Hide outliers
+  geom_jitter(width=0) + # Add points
+  ggtitle(cohesin_genes$gene_name[x])+
+  scale_fill_manual(values=c("grey","#9999FF"))+theme_classic()+theme(legend.position="none")
+ }
+
+plots <- plots[1:13]
+ggsave("protocadherin2genes_s2b.pdf",grid.arrange(grobs=plots,ncol=3))
+#plots <- plots[9:17]
+#ggsave("protocadheringenes2_s2b.pdf",grid.arrange(grobs=plots,ncol=2))
+```
+
+
+```{r}
+#read in the indexed wnt gene list
+library(readxl)
+library(ComplexHeatmap)
+WNT_genelist_anastasia_2024 <- read_excel("WNT_genelist_anastasia_2024.xlsx", 
+    skip = 2)
+WNT_genelist <- c(WNT_genelist_anastasia_2024$Ensembl_id)
+
+sigs <- as.data.frame(resSig_s2b)
+wntsigs <- sigs[row.names(sigs) %in% c(WNT_genelist), ]
+wntsigs
+rm(sigs,wntsigs)
+#show that there are no wnt pathway genes from the list in the 719 significantly DEGs
+
+dds <- estimateSizeFactors(dds)
+counts <- counts(dds, normalized=TRUE)
+countsfiltered <- counts[row.names(counts) %in% c(WNT_genelist), ]
+
+rownames(countsfiltered) = mapIds(org.Dr.eg.db,
+                            keys=rownames(countsfiltered),
+                            column = 'SYMBOL',
+                            keytype = 'ENSEMBL',
+                            multiVals = 'first')
+
+countsfiltered <- countsfiltered[ order(rowMeans(countsfiltered), decreasing = T), ]
+a <-rep(c(1, 2, 3, 4, 5, 6), each = 102/6)
+countsfiltered <- as.data.frame(countsfiltered)
+countsfiltered$index <- c(a)
+countsfiltered <- tibble::rownames_to_column(as.data.frame(countsfiltered))
+countspivot<-pivot_longer(countsfiltered, cols = 2:8)
+countspivot$name <- substr(countspivot$name, start = 1, stop = 3)
+p<-ggplot(countspivot, aes(x=reorder(rowname, value, FUN=median), y=value, fill=name))
+p +scale_fill_manual(values=c("#9999FF","grey"))+facet_wrap(.~index,scales = "free",ncol = 1)+ theme_classic()+geom_boxplot(width=0.8, linewidth=1)+ theme(axis.line = element_line(size = 1, linetype = "solid"))+labs(x = "Gene", y= "Normalized counts")
+
+vsd2 <- assay(vst(dds))
+Z <- t(scale(t(vsd2)))
+Zfiltered <- Z[row.names(Z) %in% c(WNT_genelist), ]
+rownames(Zfiltered) = mapIds(org.Dr.eg.db,
+                            keys=rownames(Zfiltered),
+                            column = 'SYMBOL',
+                            keytype = 'ENSEMBL',
+                            multiVals = 'first')
+Heatmap(Zfiltered, name="Z-score",row_names_gp = gpar(fontsize = 8), cluster_columns = F)
+Heatmap(Zfiltered, name="Z-score",row_names_gp = gpar(fontsize = 8))
+p2 <-Heatmap(Zfiltered, name="Z-score",row_names_gp = gpar(fontsize = 8), cluster_columns = F)
+p3 <- Heatmap(Zfiltered, name="Z-score",row_names_gp = gpar(fontsize = 8))
+```
+
+```{r}
+## investigating Julias genes of interest
+pdf("wntGOI_facetboxplots_julia.pdf")
+
+s2bup <- c("ctnnb1","sox2", "wnt5b", "frzb", "wnt8a", "wnt8b")
+countsup <- dplyr::filter(countsfiltered, rowname %in% s2bup)
+countsup$index <- c("2","1","1","1","1","1")
+countspivot<-pivot_longer(countsup, cols = 2:8)
+countspivot$name<- substr(countspivot$name, start = 1, stop = 3)
+countspivot$name <- factor(countspivot$name, levels = c("Wik","S2b"))
+p<-ggplot(countspivot, aes(x=reorder(rowname, value, FUN=median), y=value, fill=name))
+p +scale_fill_manual(values=c("grey","#9999FF"))+ theme_classic()+geom_boxplot(width=0.8, linewidth=1)+ theme(axis.line = element_line(size = 1, linetype = "solid"))+labs(x = "Gene", y= "Normalized counts") + facet_wrap(.~rowname, scales = "free")+theme(
+  strip.background = element_blank(),
+  strip.text.x = element_blank()
+)
+
+s2bup <- c("myca", "fzd7b", "fzd5", "wnt2", "dkk1b")
+countsup <- dplyr::filter(countsfiltered, rowname %in% s2bup)
+countspivot<-pivot_longer(countsup, cols = 2:8)
+countspivot$name <- substr(countspivot$name, start = 1, stop = 3)
+countspivot$name <- factor(countspivot$name, levels = c("Wik","S2b"))
+p<-ggplot(countspivot, aes(x=reorder(rowname, value, FUN=median), y=value, fill=name))
+p +scale_fill_manual(values=c("grey","#9999FF"))+ theme_classic()+geom_boxplot(width=0.8, linewidth=1)+ theme(axis.line = element_line(size = 1, linetype = "solid"))+labs(x = "Gene", y= "log10 Normalized counts") + scale_y_log10() +facet_wrap(.~rowname, scales = "free") +theme(
+  strip.background = element_blank(),
+  strip.text.x = element_blank()
+)
+
+vsd2 <- assay(vst(dds))
+Z <- t(scale(t(vsd2)))
+Zfiltered <- Z[row.names(Z) %in% c(WNT_genelist), ]
+rownames(Zfiltered) = mapIds(org.Dr.eg.db,
+                            keys=rownames(Zfiltered),
+                            column = 'SYMBOL',
+                            keytype = 'ENSEMBL',
+                            multiVals = 'first')
+Zfiltered <- as.data.frame(Zfiltered)
+genes <- c("ctnnb1","sox2", "wnt5b", "frzb", "wnt8a", "wnt8b","myca", "fzd7b", "fzd5", "wnt2", "dkk1b")
+Zfiltered <- dplyr::filter(Zfiltered, rownames(Zfiltered) %in% genes)
+Heatmap(Zfiltered, name="Z-score",row_names_gp = gpar(fontsize = 8), cluster_columns = F)
+p2 <-Heatmap(Zfiltered, name="Z-score",row_names_gp = gpar(fontsize = 8), cluster_columns = F)
+
+```
+
+```{r}
+pdf("wntlist_boxplot.pdf", height = 30, width = 10)
+print(p +scale_fill_manual(values=c("#9999FF","grey"))+facet_wrap(.~index,scales = "free",ncol = 1)+ theme_classic()+geom_boxplot(width=0.8, linewidth=1)+ theme(axis.line = element_line(size = 1, linetype = "solid"))+labs(x = "Gene", y= "Normalized counts"))
+dev.off
+```
+```{r}
+pdf("wntlist_Zscore_heatmap.pdf")
+print(p2)
+dev.off
+```
+```{r}
+pdf("wntlist_Zscore_heatmap_clustered.pdf")
+print(p3)
+dev.off
+```
+
+

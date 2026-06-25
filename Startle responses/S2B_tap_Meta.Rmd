@@ -1,0 +1,573 @@
+---
+title: "s2b_wik_binarised"
+author: "Daniel"
+date: "2024-13-08"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(tidyverse)
+library(readxl)
+library(viridis)
+library(reshape2)
+library(viridis)
+library(ggstatsplot)
+
+```
+
+##### Light analysis
+```{r dataprocessing, warning=FALSE}
+## reading in trial 1 and genotyping
+rawdata1 <- lapply(1:96, function(i) read_excel("Raw data-Light_Dark_Tap_Startle_14-5-25-Trial     1.xlsx", sheet = i, skip = 38))
+geno1 <- read_csv("Genotypes 14-5-25.csv")
+geno1v <- geno1$Genotype
+
+## reading in trial 2 and genotyping
+rawdata2 <- lapply(1:96, function(i) read_excel("Raw data-Light_Dark_Tap_Startle_23-5-25-Trial     1.xlsx", sheet = i, skip = 38))
+geno2 <- read_csv("Genotypes 23-5-25.csv")
+geno2v <- geno2$Genotype
+
+## reading in trial 3 and genotyping
+rawdata3 <- lapply(1:96, function(i) read_excel("Raw data-Light_Dark_Tap_Startle_4-6-25-Trial     1.xlsx", sheet = i, skip = 38))
+geno3 <- read_csv("Genotypes 4-6-25.csv")
+geno3v <- geno3$Genotype
+
+```
+
+```{r concatenate}
+## concatenating the raw data files
+geno <- (c(geno1v,geno2v,geno3v))
+rawdatatt <- (c(rawdata1,rawdata2,rawdata3))
+## removing spaces from all the column names (manually for laziness)
+colnames<-c("Trialtime","Recordingtime","Xcenter","Ycenter","Area","Areachange","Elongation","Distancemoved","Velocity","Movement(Moving/Center-point)","Movement(NotMoving/Center-point)","Treated")
+rawdatat <- lapply(rawdatatt, setNames, colnames)
+rm(rawdata1,rawdata2,rawdata3,rawdatat1,rawdatat2,rawdatat3,geno1,geno2,geno3)
+```
+
+##### Light analysis
+
+```{r stag2b analysis}
+########################### stag2b analysis
+## Subsetting the samples which are stag2b
+s2bdatalight <- rawdatat[grep(pattern = "S2b 6dpf", x = geno)]
+  
+## Make dataframe of velocity of s2b larvae (25 fps)
+trialtime <- s2bdatalight[[1]][["Trialtime"]]
+s2bdatalight <- lapply(s2bdatalight, select, Distancemoved)
+s2bvelocitydatalight <- as.data.frame(s2bdatalight)
+rownames(s2bvelocitydatalight) <- trialtime
+s2bvelocitydatalight[s2bvelocitydatalight=="-"]<-0
+
+## Creating and applying a function to do this repeatedly:
+## rowsum(as.numeric(s2bvelocitydatalight[,1]), as.numeric(gl(nrow(s2bvelocitydatalight), 25, nrow(s2bvelocitydatalight))))
+## Creates a new dataframe with the sum of every 25 rows, the row names are now recording times rather then trialtimes
+
+s2bvelocitydatalightsec <- apply(s2bvelocitydatalight, 2, function(x) rowsum(as.numeric(x), as.numeric(gl(nrow(s2bvelocitydatalight), 25, nrow(s2bvelocitydatalight)))))
+s2bvelocitydatalightsec<- data.frame(s2bvelocitydatalightsec)
+
+# s2bvelocitydatalightsec$trialtime<-rownames(s2bvelocitydatalightsec)
+
+```
+
+```{r wik 8 analysis}
+########################## wik 8 analysis
+## Subsetting the samples which are wik8
+wik8datalight <- rawdatat[grep(pattern = "WIK 8dpf", x = geno)]
+  
+## Make dataframe of velocity of wik8 larvae (25 fps)
+trialtime <- wik8datalight[[1]][["Trialtime"]]
+wik8datalight <- lapply(wik8datalight, select, Distancemoved)
+wik8velocitydatalight <- as.data.frame(wik8datalight)
+rownames(wik8velocitydatalight) <- trialtime
+wik8velocitydatalight[wik8velocitydatalight=="-"]<-0
+## Creating and applying a function to do this repeatedly:
+## rowsum(as.numeric(wik8velocitydatalight[,1]), as.numeric(gl(nrow(wik8velocitydatalight), 25, nrow(wik8velocitydatalight))))
+## Creates a new dataframe with the sum of every 25 rows, the row names are now recording times rather then trialtimes
+
+wik8velocitydatalightsec <- apply(wik8velocitydatalight, 2, function(x) rowsum(as.numeric(x), as.numeric(gl(nrow(wik8velocitydatalight), 25, nrow(wik8velocitydatalight)))))
+wik8velocitydatalightsec<- data.frame(wik8velocitydatalightsec)
+
+# wik8velocitydatalightsec$trialtime<-rownames(wik8velocitydatalightsec)
+
+```
+
+```{r WIK analysis}
+########################## WIK analysis
+## Subsetting the samples which are wik
+wikdatalight <- rawdatat[grep(pattern = "WIK 6dpf", x = geno)]
+  
+## Make dataframe of velocity of wik larvae (25 fps)
+trialtime <- wikdatalight[[1]][["Trialtime"]]
+wikdatalight <- lapply(wikdatalight, select, Distancemoved)
+wikvelocitydatalight <- as.data.frame(wikdatalight)
+rownames(wikvelocitydatalight) <- trialtime
+wikvelocitydatalight[wikvelocitydatalight=="-"]<-0
+## Creating and applying a function to do this repeatedly:
+## rowsum(as.numeric(wikvelocitydatalight[,1]), as.numeric(gl(nrow(wikvelocitydatalight), 25, nrow(wikvelocitydatalight))))
+## Creates a new dataframe with the sum of every 25 rows, the row names are now recording times rather then trialtimes
+
+wikvelocitydatalightsec <- apply(wikvelocitydatalight, 2, function(x) rowsum(as.numeric(x), as.numeric(gl(nrow(wikvelocitydatalight), 25, nrow(wikvelocitydatalight)))))
+wikvelocitydatalightsec<- data.frame(wikvelocitydatalightsec)
+
+# wikvelocitydatalightsec$trialtime<-rownames(wikvelocitydatalightsec)
+
+```
+
+```{r Binarise 0.5mm and proportion}
+# Binarising this data and making a dataframe out of the summed binaries to provide the number of fish moving at each time point 0.5mm/s as threshold
+# unit here is decimillimetres so 5=0.5mm
+s2bvelocitydatalightsecbin <- ifelse(s2bvelocitydatalightsec > 0.5,1,0)
+wik8velocitydatalightsecbin <- ifelse(wik8velocitydatalightsec > 0.5,1,0)
+wikvelocitydatalightsecbin <- ifelse(wikvelocitydatalightsec > 0.5,1,0)
+
+startlecounts <- data.frame(rowSums(s2bvelocitydatalightsecbin), rowSums(wik8velocitydatalightsecbin),rowSums(wikvelocitydatalightsecbin))
+startlecounts$trialtime<-rownames(startlecounts)
+colnames(startlecounts) <- c("s2b","wik8","wik", "trialtime")
+
+counttablegeno <- table(geno)
+startleprops <- mutate(startlecounts, 
+                       startlecounts$s2b/as.numeric(counttablegeno[1]), 
+                       startlecounts$wik/as.numeric(counttablegeno[2]), 
+                       startlecounts$wik8/as.numeric(counttablegeno[3]))
+
+colnames(startleprops) <- c("s2bc","wik8c","wikc","trialtime","s2b","wik","wik8")
+
+```
+
+```{r Plot}
+darktaps <- c(900,930,960,990,1020)
+darkflashes <- c(1950,1980,2010,2040,2070)
+
+ggplot(melt(startleprops[,4:6]), aes(x= as.numeric(trialtime)-1, y=value, group=variable, colour = variable, alpha=0.5))+
+    geom_line(lwd = 1) +
+    geom_point(data= subset(melt(startleprops[,4:6]), trialtime == c(901)), cex=3 ) +
+    geom_point(data= subset(melt(startleprops[,4:6]), trialtime == c(931)), cex=3 ) +
+    geom_point(data= subset(melt(startleprops[,4:6]), trialtime == c(961)), cex=3 ) +
+    geom_point(data= subset(melt(startleprops[,4:6]), trialtime == c(991)), cex=3 ) +
+    geom_point(data= subset(melt(startleprops[,4:6]), trialtime == c(1021)), cex=3 ) +
+    ggtitle("Tap response") +
+    xlim(850, 1050) +
+    ylim(0, 1) +
+    xlab("Trial Time (s)") +
+    ylab("Proportion of fish active")+ 
+    labs(colour = "Genotype") +
+    guides(alpha = "none") +
+    theme(axis.line = element_line(color='black'), 
+          panel.grid.major = element_blank(), 
+          panel.grid.minor = element_blank(), 
+           panel.background = element_rect(fill = '#ebe8e8'),
+          legend.position = "bottom") +
+    scale_color_manual(values=c("#9999FF", "black" )) +
+    geom_vline(xintercept = darktaps, col = "white", lwd = 1.5, alpha =0.5)
+ggsave("DarkCombinedtapproportions.pdf", dpi = "retina")
+
+ggplot(melt(startleprops[,4:6]), aes(x= as.numeric(trialtime)-1, y=value, group=variable, colour = variable, alpha=0.5))+
+    geom_line(lwd = 1) +
+    geom_point(data= subset(melt(startleprops[,4:6]), trialtime == c(1951)), cex=3 ) +
+    geom_point(data= subset(melt(startleprops[,4:6]), trialtime == c(1981)), cex=3 ) +
+    geom_point(data= subset(melt(startleprops[,4:6]), trialtime == c(2011)), cex=3 ) +
+    geom_point(data= subset(melt(startleprops[,4:6]), trialtime == c(2041)), cex=3 ) +
+    geom_point(data= subset(melt(startleprops[,4:6]), trialtime == c(2071)), cex=3 ) +
+    ggtitle("Flash response") +
+    xlim(1900, 2100) +
+    ylim(0, 1) +
+    xlab("Trial Time (s)") +
+    ylab("Proportion of fish active")+ 
+    labs(colour = "Genotype") +
+    guides(alpha = "none") +
+    theme(axis.line = element_line(color='black'), 
+          panel.grid.major = element_blank(), 
+          panel.grid.minor = element_blank(), 
+           panel.background = element_rect(fill = '#ebe8e8'),
+          legend.position = "bottom") +
+    scale_color_manual(values=c("#9999FF", "black" )) +
+    geom_vline(xintercept = darkflashes, col = "white", lwd = 1.5, alpha =0.5)
+ggsave("Dark_Combinedflashproportions.pdf", dpi = "retina")
+
+ggplot(melt(startleprops[,4:6]), aes(x= as.numeric(trialtime)-1, y=value, group=variable, colour = variable, alpha=0.5))+
+  geom_line(lwd = 1) +
+    ggtitle("Full Experiment") +
+    xlim(0, 2100) +
+    ylim(0, 1) +
+    xlab("Trial Time (s)") +
+    ylab("Proportion of fish active")+ 
+    labs(colour = "Genotype") +
+    guides(alpha = "none") +
+    theme(axis.line = element_line(color='black'), 
+          panel.grid.major = element_blank(), 
+          panel.grid.minor = element_blank(), 
+           panel.background = element_rect(fill = '#ebe8e8'),
+          legend.position = "bottom") +
+    scale_color_manual(values=c("#9999FF", "black" )) 
+ggsave("Dark_Combinedproportions.pdf", dpi = "retina")
+```
+
+### Dark flash dataprocessing
+
+```{r dataprocessing, warning=FALSE}
+## reading in trial 1 and genotyping
+rawdata1 <- lapply(1:96, function(i) read_excel("Raw data-Light_Dark_Tap_Startle_14-5-25-Trial     2.xlsx", sheet = i, skip = 38))
+## reading in trial 2 and genotyping
+rawdata2 <- lapply(1:96, function(i) read_excel("Raw data-Light_Dark_Tap_Startle_23-5-25-Trial     2.xlsx", sheet = i, skip = 38))
+## reading in trial 3 and genotyping
+rawdata3 <- lapply(1:96, function(i) read_excel("Raw data-Light_Dark_Tap_Startle_4-6-25-Trial     2.xlsx", sheet = i, skip = 38))
+```
+
+```{r concatenate}
+## concatenating the raw data files
+rawdatatt <- (c(rawdata1,rawdata2,rawdata3))
+## removing spaces from all the column names (manually for laziness)
+colnames<-c("Trialtime","Recordingtime","Xcenter","Ycenter","Area","Areachange","Elongation","Distancemoved","Velocity","Movement(Moving/Center-point)","Movement(NotMoving/Center-point)","Treated")
+rawdatat <- lapply(rawdatatt, setNames, colnames)
+# rm(rawdata1,rawdata2,rawdata3,rawdatat1,rawdatat2,rawdatat3,geno1,geno2,geno3)
+```
+
+
+```{r stag2b analysis}
+########################### stag2b analysis
+## Subsetting the samples which are stag2b
+s2bdatadark <- rawdatat[grep(pattern = "S2b 6dpf", x = geno)]
+  
+## Make dataframe of velocity of s2b larvae (25 fps)
+trialtime <- s2bdatadark[[1]][["Trialtime"]]
+s2bdatadark <- lapply(s2bdatadark, select, Distancemoved)
+s2bvelocitydatadark <- as.data.frame(s2bdatadark)
+rownames(s2bvelocitydatadark) <- trialtime
+s2bvelocitydatadark[s2bvelocitydatadark=="-"]<-0
+
+## Creating and applying a function to do this repeatedly:
+## rowsum(as.numeric(s2bvelocitydatadark[,1]), as.numeric(gl(nrow(s2bvelocitydatadark), 25, nrow(s2bvelocitydatadark))))
+## Creates a new dataframe with the sum of every 25 rows, the row names are now recording times rather then trialtimes
+
+s2bvelocitydatadarksec <- apply(s2bvelocitydatadark, 2, function(x) rowsum(as.numeric(x), as.numeric(gl(nrow(s2bvelocitydatadark), 25, nrow(s2bvelocitydatadark)))))
+s2bvelocitydatadarksec<- data.frame(s2bvelocitydatadarksec)
+
+# s2bvelocitydatadarksec$trialtime<-rownames(s2bvelocitydatadarksec)
+
+```
+
+```{r wik 8 analysis}
+########################## wik 8 analysis
+## Subsetting the samples which are wik8
+wik8datadark <- rawdatat[grep(pattern = "WIK 8dpf", x = geno)]
+  
+## Make dataframe of velocity of wik8 larvae (25 fps)
+trialtime <- wik8datadark[[1]][["Trialtime"]]
+wik8datadark <- lapply(wik8datadark, select, Distancemoved)
+wik8velocitydatadark <- as.data.frame(wik8datadark)
+rownames(wik8velocitydatadark) <- trialtime
+wik8velocitydatadark[wik8velocitydatadark=="-"]<-0
+## Creating and applying a function to do this repeatedly:
+## rowsum(as.numeric(wik8velocitydatadark[,1]), as.numeric(gl(nrow(wik8velocitydatadark), 25, nrow(wik8velocitydatadark))))
+## Creates a new dataframe with the sum of every 25 rows, the row names are now recording times rather then trialtimes
+
+wik8velocitydatadarksec <- apply(wik8velocitydatadark, 2, function(x) rowsum(as.numeric(x), as.numeric(gl(nrow(wik8velocitydatadark), 25, nrow(wik8velocitydatadark)))))
+wik8velocitydatadarksec<- data.frame(wik8velocitydatadarksec)
+
+# wik8velocitydatadarksec$trialtime<-rownames(wik8velocitydatadarksec)
+
+```
+
+```{r WIK analysis}
+########################## WIK analysis
+## Subsetting the samples which are wik
+wikdatadark <- rawdatat[grep(pattern = "WIK 6dpf", x = geno)]
+  
+## Make dataframe of velocity of wik larvae (25 fps)
+trialtime <- wikdatadark[[1]][["Trialtime"]]
+wikdatadark <- lapply(wikdatadark, select, Distancemoved)
+wikvelocitydatadark <- as.data.frame(wikdatadark)
+rownames(wikvelocitydatadark) <- trialtime
+wikvelocitydatadark[wikvelocitydatadark=="-"]<-0
+## Creating and applying a function to do this repeatedly:
+## rowsum(as.numeric(wikvelocitydatadark[,1]), as.numeric(gl(nrow(wikvelocitydatadark), 25, nrow(wikvelocitydatadark))))
+## Creates a new dataframe with the sum of every 25 rows, the row names are now recording times rather then trialtimes
+
+wikvelocitydatadarksec <- apply(wikvelocitydatadark, 2, function(x) rowsum(as.numeric(x), as.numeric(gl(nrow(wikvelocitydatadark), 25, nrow(wikvelocitydatadark)))))
+wikvelocitydatadarksec<- data.frame(wikvelocitydatadarksec)
+
+# wikvelocitydatadarksec$trialtime<-rownames(wikvelocitydatadarksec)
+
+```
+
+```{r Binarise 0.5mm and proportion}
+# Binarising this data and making a dataframe out of the summed binaries to provide the number of fish moving at each time point 0.5mm/s as threshold
+# unit here is decimillimetres so 5=0.5mm
+s2bvelocitydatadarksecbin <- ifelse(s2bvelocitydatadarksec > 0.5,1,0)
+wik8velocitydatadarksecbin <- ifelse(wik8velocitydatadarksec > 0.5,1,0)
+wikvelocitydatadarksecbin <- ifelse(wikvelocitydatadarksec > 0.5,1,0)
+
+startlecounts <- data.frame(rowSums(s2bvelocitydatadarksecbin), rowSums(wik8velocitydatadarksecbin),rowSums(wikvelocitydatadarksecbin))
+startlecounts$trialtime<-rownames(startlecounts)
+colnames(startlecounts) <- c("s2b","wik8","wik", "trialtime")
+
+counttablegeno <- table(geno)
+startleprops <- mutate(startlecounts, 
+                       startlecounts$s2b/as.numeric(counttablegeno[1]), 
+                       startlecounts$wik/as.numeric(counttablegeno[2]), 
+                       startlecounts$wik8/as.numeric(counttablegeno[3]))
+
+colnames(startleprops) <- c("s2bc","wik8c","wikc","trialtime","s2b","wik","wik8")
+
+```
+
+```{r Plot}
+darktaps <- c(901,931,961,991,1021)
+darkflashes <- c(1951,1981,2011,2041,2071)
+
+ggplot(melt(startleprops[,4:6]), aes(x= as.numeric(trialtime)-1, y=value, group=variable, colour = variable, alpha=0.5))+
+    geom_line(lwd = 1) +
+    geom_point(data= subset(melt(startleprops[,4:6]), trialtime == c(901)), cex=3 ) +
+    geom_point(data= subset(melt(startleprops[,4:6]), trialtime == c(931)), cex=3 ) +
+    geom_point(data= subset(melt(startleprops[,4:6]), trialtime == c(961)), cex=3 ) +
+    geom_point(data= subset(melt(startleprops[,4:6]), trialtime == c(991)), cex=3 ) +
+    geom_point(data= subset(melt(startleprops[,4:6]), trialtime == c(1021)), cex=3 ) +
+    ggtitle("Tap response") +
+    xlim(850, 1050) +
+    ylim(0, 1) +
+    xlab("Trial Time (s)") +
+    ylab("Proportion of fish active")+ 
+    labs(colour = "Genotype") +
+    guides(alpha = "none") +
+    theme(axis.line = element_line(color='black'), 
+          panel.grid.major = element_blank(), 
+          panel.grid.minor = element_blank(), 
+          panel.background = element_blank(),
+          legend.position = "bottom") +
+    scale_color_manual(values=c("#9999FF", "black" )) +
+    geom_vline(xintercept = darktaps, col = "black", lwd = 1.5, alpha =0.1)
+ggsave("Light_Combinedtapproportions.pdf", dpi = "retina")
+
+ggplot(melt(startleprops[,4:6]), aes(x= as.numeric(trialtime)-1, y=value, group=variable, colour = variable, alpha=0.5))+
+    geom_line(lwd = 1) +
+    ggtitle("Flash response") +
+    xlim(1900, 2100) +
+    ylim(0, 1) +
+    xlab("Trial Time (s)") +
+    ylab("Proportion of fish active")+ 
+    labs(colour = "Genotype") +
+    guides(alpha = "none") +
+    theme(axis.line = element_line(color='black'), 
+          panel.grid.major = element_blank(), 
+          panel.grid.minor = element_blank(), 
+          panel.background = element_blank(),
+          legend.position = "bottom") +
+    scale_color_manual(values=c("#9999FF", "black" )) +
+    geom_vline(xintercept = darkflashes, col = "black", lwd = 1.5, alpha =0.1)
+ggsave("Light_Combinedflashproportions.pdf", dpi = "retina")
+
+ggplot(melt(startleprops[,4:6]), aes(x= as.numeric(trialtime)-1, y=value, group=variable, colour = variable, alpha=0.5))+
+  geom_line(lwd = 1) +
+    geom_point(data= subset(melt(startleprops[,4:6]), trialtime == c(1951)), cex=3 ) +
+    geom_point(data= subset(melt(startleprops[,4:6]), trialtime == c(1981)), cex=3 ) +
+    geom_point(data= subset(melt(startleprops[,4:6]), trialtime == c(2011)), cex=3 ) +
+    geom_point(data= subset(melt(startleprops[,4:6]), trialtime == c(2041)), cex=3 ) +
+    geom_point(data= subset(melt(startleprops[,4:6]), trialtime == c(2071)), cex=3 ) +
+    ggtitle("Tap response") +
+    xlim(0, 2100) +
+    ylim(0, 1) +
+    xlab("Trial Time (s)") +
+    ylab("Proportion of fish active")+ 
+    labs(colour = "Genotype") +
+    guides(alpha = "none") +
+    theme(axis.line = element_line(color='black'), 
+          panel.grid.major = element_blank(), 
+          panel.grid.minor = element_blank(), 
+          panel.background = element_blank(),
+          legend.position = "bottom") +
+    scale_color_manual(values=c("#9999FF", "black" )) 
+ggsave("Light_Combinedproportions.pdf", dpi = "retina")
+
+```
+```{r}
+table(geno)
+```
+
+
+```{r}
+## baseline versus post startle activity dark acclimated tapping
+startlecounts <- data.frame(
+  WIK_Baseline = c(colSums(wikvelocitydatalightsecbin[1:900,])/900,rep(NA, 142-length(colSums(wikvelocitydatalightsecbin)))),
+  WIK_Post_startle = c(colSums(wikvelocitydatalightsecbin[c(902:930,932:960,962:990,1022:1050),])/145,rep(NA, 142-length(colSums(wikvelocitydatalightsecbin)))),
+  
+  s2b_Baseline = c(colSums(s2bvelocitydatalightsecbin[1:900,])/900,rep(NA, 142-length(colSums(s2bvelocitydatalightsecbin)))),
+  s2b_Post_startle = c(colSums(s2bvelocitydatalightsecbin[c(902:930,932:960,962:990,1022:1050),])/145,rep(NA, 142-length(colSums(s2bvelocitydatalightsecbin))))
+)
+
+startleprops <- melt(startlecounts)
+startleprops$genotype <- c(rep("WIK", 284),rep("s2b", 284))
+startleprops$variable <- c(rep("Baseline", 142),rep("Post Startle", 142),rep("Baseline", 142),rep("Post Startle", 142))
+startleprops<- remove_missing(startleprops)
+
+
+p <-ggplot(startleprops, aes(x=factor(genotype, levels=c('WIK','s2b')), y=value)) +
+  geom_boxplot(aes(color = variable),
+               position = position_dodge(width = .9),
+               outlier.size = 0.3)+
+   ggtitle("Light acclimatized baseline versus post startle activity") +
+    xlab("Genotype") +
+    ylab("Proportion of seconds active")+
+   theme(axis.line = element_line(color='black'), 
+          panel.grid.major = element_blank(), 
+          panel.grid.minor = element_blank(), 
+          panel.background = element_blank(),
+          legend.position = "bottom") +
+          ylim(0,1.3) +
+          scale_color_manual(values=c("black", "red"))
+  
+p+  
+geom_signif(
+    y_position = c(1.05, 1.05), xmin = c(0.8, 1.8), xmax = c(1.2, 2.2),
+    annotation = c("0.01628", "0.2408"), tip_length = 0
+  ) +
+    geom_signif(
+    comparisons = list(c("s2b", "WIK")),
+    y_position = 1.2, tip_length = 0, vjust = 0.2)
+
+ggsave("dark_tap_base.pdf", dpi = "retina")
+
+t.test(x=startlecounts$WIK_Baseline, y=startlecounts$WIK_Post_startle, paired = T, alternative = "two.sided")
+
+t.test(x=startlecounts$s2b_Baseline, y=startlecounts$s2b_Post_startle, paired = T, alternative = "two.sided")
+```
+
+```{r}
+## baseline versus post startle activity dark acclimated flash
+startlecounts <- data.frame(
+  WIK_Baseline = c(colSums(wikvelocitydatalightsecbin[1050:1950,])/900,rep(NA, 142-length(colSums(wikvelocitydatalightsecbin)))),
+  WIK_Post_startle = c(colSums(wikvelocitydatalightsecbin[c(1952:1980,1982:2010,2012:2040,2072:2100),])/145,rep(NA, 142-length(colSums(wikvelocitydatalightsecbin)))),
+  
+  s2b_Baseline = c(colSums(s2bvelocitydatalightsecbin[1050:1950,])/900,rep(NA, 142-length(colSums(s2bvelocitydatalightsecbin)))),
+  s2b_Post_startle = c(colSums(s2bvelocitydatalightsecbin[c(1952:1980,1982:2010,2012:2040,2072:2100),])/145,rep(NA, 142-length(colSums(s2bvelocitydatalightsecbin))))
+)
+
+startleprops <- melt(startlecounts)
+startleprops$genotype <- c(rep("WIK", 284),rep("s2b", 284))
+startleprops$variable <- c(rep("Baseline", 142),rep("Post Startle", 142),rep("Baseline", 142),rep("Post Startle", 142))
+startleprops<- remove_missing(startleprops)
+
+
+p <-ggplot(startleprops, aes(x=factor(genotype, levels=c('WIK','s2b')), y=value)) +
+  geom_boxplot(aes(color = variable),
+               position = position_dodge(width = .9),
+               outlier.size = 0.3)+
+   ggtitle("Dark acclimatized baseline versus post startle activity") +
+    xlab("Genotype") +
+    ylab("Proportion of seconds active")+
+   theme(axis.line = element_line(color='black'), 
+          panel.grid.major = element_blank(), 
+          panel.grid.minor = element_blank(), 
+          panel.background = element_blank(),
+          legend.position = "bottom") +
+          ylim(0,1.3) +
+          scale_color_manual(values=c("black", "red"))
+  
+p+  
+geom_signif(
+    y_position = c(1.05, 1.05), xmin = c(0.8, 1.8), xmax = c(1.2, 2.2),
+    annotation = c("p < 2.2e-16", "p < 2.2e-16"), tip_length = 0
+  ) +
+    geom_signif(
+    comparisons = list(c("s2b", "WIK")),
+    y_position = 1.2, tip_length = 0, vjust = 0.2)
+
+ggsave("dark_flash_base.pdf", dpi = "retina")
+
+t.test(x=startlecounts$WIK_Baseline, y=startlecounts$WIK_Post_startle, paired = T, alternative = "two.sided")
+t.test(x=startlecounts$s2b_Baseline, y=startlecounts$s2b_Post_startle, paired = T, alternative = "two.sided")
+```
+
+```{r}
+## baseline versus post startle activity light acclimated tap
+startlecounts <- data.frame(
+  WIK_Baseline = c(colSums(wikvelocitydatadarksecbin[1:900,])/900,rep(NA, 142-length(colSums(wikvelocitydatadarksecbin)))),
+  WIK_Post_startle = c(colSums(wikvelocitydatadarksecbin[c(902:930,932:960,962:990,1022:1050),])/145,rep(NA, 142-length(colSums(wikvelocitydatadarksecbin)))),
+  
+  s2b_Baseline = c(colSums(s2bvelocitydatadarksecbin[1:900,])/900,rep(NA, 142-length(colSums(s2bvelocitydatadarksecbin)))),
+  s2b_Post_startle = c(colSums(s2bvelocitydatadarksecbin[c(902:930,932:960,962:990,1022:1050),])/145,rep(NA, 142-length(colSums(s2bvelocitydatadarksecbin))))
+)
+
+startleprops <- melt(startlecounts)
+startleprops$genotype <- c(rep("WIK", 284),rep("s2b", 284))
+startleprops$variable <- c(rep("Baseline", 142),rep("Post Startle", 142),rep("Baseline", 142,),rep("Post Startle", 142))
+startleprops<- remove_missing(startleprops)
+
+
+p <-ggplot(startleprops, aes(x=factor(genotype, levels=c('WIK','s2b')), y=value)) +
+  geom_boxplot(aes(color = variable),
+               position = position_dodge(width = .9),
+               outlier.size = 0.3)+
+   ggtitle("light acclimatized tapping baseline versus post startle activity") +
+    xlab("Genotype") +
+    ylab("Proportion of seconds active")+
+   theme(axis.line = element_line(color='black'), 
+          panel.grid.major = element_blank(), 
+          panel.grid.minor = element_blank(), 
+          panel.background = element_blank(),
+          legend.position = "bottom") +
+          ylim(0,1.3) +
+          scale_color_manual(values=c("black", "red"))
+  
+p+  
+geom_signif(
+    y_position = c(1.05, 1.05), xmin = c(0.8, 1.8), xmax = c(1.2, 2.2),
+    annotation = c("1.564e-11", "2.912e-11"), tip_length = 0
+  ) +
+    geom_signif(
+    comparisons = list(c("s2b", "WIK")),
+    y_position = 1.2, tip_length = 0, vjust = 0.2)
+
+ggsave("light_base_tap.pdf", dpi = "retina")
+
+t.test(x=startlecounts$WIK_Baseline, y=startlecounts$WIK_Post_startle, paired = T, alternative = "two.sided")
+
+t.test(x=startlecounts$s2b_Baseline, y=startlecounts$s2b_Post_startle, paired = T, alternative = "two.sided")
+```
+
+```{r}
+## baseline versus post startle activity light acclimated flash
+startlecounts <- data.frame(
+  WIK_Baseline = c(colSums(wikvelocitydatadarksecbin[1050:1950,])/900,rep(NA, 142-length(colSums(wikvelocitydatadarksecbin)))),
+  WIK_Post_startle = c(colSums(wikvelocitydatadarksecbin[c(1952:1980,1982:2010,2012:2040,2072:2100),])/145,rep(NA, 142-length(colSums(wikvelocitydatadarksecbin)))),
+  
+  s2b_Baseline = c(colSums(s2bvelocitydatadarksecbin[1050:1950,])/900,rep(NA, 142-length(colSums(s2bvelocitydatadarksecbin)))),
+  s2b_Post_startle = c(colSums(s2bvelocitydatadarksecbin[c(1952:1980,1982:2010,2012:2040,2072:2100),])/145,rep(NA, 142-length(colSums(s2bvelocitydatadarksecbin))))
+)
+
+startleprops <- melt(startlecounts)
+startleprops$genotype <- c(rep("WIK", 284),rep("s2b", 284))
+startleprops$variable <- c(rep("Baseline", 142),rep("Post Startle", 142),rep("Baseline", 142),rep("Post Startle", 142))
+startleprops<- remove_missing(startleprops)
+
+
+p <-ggplot(startleprops, aes(x=factor(genotype, levels=c('WIK','s2b')), y=value)) +
+  geom_boxplot(aes(color = variable),
+               position = position_dodge(width = .9),
+               outlier.size = 0.3)+
+   ggtitle("light acclimatized flash baseline versus post startle activity") +
+    xlab("Genotype") +
+    ylab("Proportion of seconds active")+
+   theme(axis.line = element_line(color='black'), 
+          panel.grid.major = element_blank(), 
+          panel.grid.minor = element_blank(), 
+          panel.background = element_blank(),
+          legend.position = "bottom") +
+          ylim(0,1.3) +
+          scale_color_manual(values=c("black", "red"))
+  
+p+  
+geom_signif(
+    y_position = c(1.05, 1.05), xmin = c(0.8, 1.8), xmax = c(1.2, 2.2),
+    annotation = c("p = 8.761e-06", "p = 0.9431"), tip_length = 0
+  ) +
+    geom_signif(
+    comparisons = list(c("s2b", "WIK")),
+    y_position = 1.2, tip_length = 0, vjust = 0.2)
+
+ggsave("light_base_flash.pdf", dpi = "retina")
+
+t.test(x=startlecounts$WIK_Baseline, y=startlecounts$WIK_Post_startle, paired = T, alternative = "two.sided")
+t.test(x=startlecounts$s2b_Baseline, y=startlecounts$s2b_Post_startle, paired = T, alternative = "two.sided")
+```
+

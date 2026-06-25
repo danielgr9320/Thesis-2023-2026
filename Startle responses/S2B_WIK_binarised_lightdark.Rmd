@@ -1,0 +1,741 @@
+---
+title: "S2B_WIK_binarised_lightdark"
+output: html_document
+date: "2024-08-07"
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(tidyverse)
+library(readxl)
+library(viridis)
+library(reshape2)
+library(viridis)
+library(ggstatsplot)
+library(gridExtra)
+library(ggsignif)
+library(cowplot)
+```
+
+### Reading in and processing
+```{r, dataprocessing light -copied, include=FALSE}
+############ [Trial 1] ############
+
+## reading in all 96 sheets from the excel sheet
+rawdata <- lapply(1:96, function(i) read_excel("Raw data-Startle response 29-8-Trial     1 light.xlsx", sheet = i, skip = 36))
+
+## removing the first row with the units and the second row which is the positions at trial start (aka no movement to track)
+rawdatat <- lapply(rawdata, function(y) y[-1,])
+rawdatattlight <- lapply(rawdatat, function(y) y[-1,])
+
+## removing spaces from all the column names (manually for laziness)
+colnames<-c("Trialtime","Recordingtime","Xcenter","Ycenter","Area","Areachange","Elongation","Distancemoved","Velocity","Movement(Moving/Center-point)","Movement(NotMoving/Center-point)","Treated")
+rawdatattlight1 <- lapply(rawdatattlight, setNames, colnames)
+
+rm(rawdata, rawdatat, rawdatattlight)
+
+############ [Trial 2] ############
+
+## reading in all 96 sheets from the excel sheet
+rawdata <- lapply(1:96, function(i) read_excel("Raw data-Startle response s2b 16-10-23-Trial     1 light.xlsx", sheet = i, skip = 36))
+
+## removing the first row with the units and the second row which is the positions at trial start (aka no movement to track)
+rawdatat <- lapply(rawdata, function(y) y[-1,])
+rawdatattlight <- lapply(rawdatat, function(y) y[-1,])
+
+## removing spaces from all the column names (manually for laziness)
+colnames<-c("Trialtime","Recordingtime","Xcenter","Ycenter","Area","Areachange","Elongation","Distancemoved","Velocity","Movement(Moving/Center-point)","Movement(NotMoving/Center-point)","Treated")
+rawdatattlight2 <- lapply(rawdatattlight, setNames, colnames)
+
+rm(rawdata, rawdatat, rawdatattlight)
+############ [Trial 3] ############
+
+## reading in all 96 sheets from the excel sheet
+rawdata <- lapply(1:96, function(i) read_excel("Raw data-Startle response s2b 26-10-23-Trial     1.xlsx", sheet = i, skip = 36))
+
+## removing the first row with the units and the second row which is the positions at trial start (aka no movement to track)
+rawdatat <- lapply(rawdata, function(y) y[-1,])
+rawdatattlight <- lapply(rawdatat, function(y) y[-1,])
+
+## removing spaces from all the column names (manually for laziness)
+colnames<-c("Trialtime","Recordingtime","Xcenter","Ycenter","Area","Areachange","Elongation","Distancemoved","Velocity","Movement(Moving/Center-point)","Movement(NotMoving/Center-point)","Treated")
+rawdatattlight3 <- lapply(rawdatattlight, setNames, colnames)
+
+rm(rawdata, rawdatat, rawdatattlight)
+```
+
+```{r, dataprocessing dark -copied, include=FALSE}
+############ [Trial 1] ############
+
+## reading in all 96 sheets from the excel sheet
+rawdata <- lapply(1:96, function(i) read_excel("Raw data-Startle response 29-8-Trial     2 dark.xlsx", sheet = i, skip = 36))
+
+## removing the first row with the units and the second row which is the positions at trial start (aka no movement to track)
+rawdatat <- lapply(rawdata, function(y) y[-1,])
+rawdatattdark <- lapply(rawdatat, function(y) y[-1,])
+
+## removing spaces from all the column names (manually for laziness)
+colnames<-c("Trialtime","Recordingtime","Xcenter","Ycenter","Area","Areachange","Elongation","Distancemoved","Velocity","Movement(Moving/Center-point)","Movement(NotMoving/Center-point)","Treated")
+rawdatattdark1 <- lapply(rawdatattdark, setNames, colnames)
+
+rm(rawdata, rawdatat, rawdatattdark)
+
+############ [Trial 2] ############
+
+## reading in all 96 sheets from the excel sheet
+rawdata <- lapply(1:96, function(i) read_excel("Raw data-Startle response s2b 16-10-23-Trial     2 dark.xlsx", sheet = i, skip = 36))
+
+## removing the first row with the units and the second row which is the positions at trial start (aka no movement to track)
+rawdatat <- lapply(rawdata, function(y) y[-1,])
+rawdatattdark <- lapply(rawdatat, function(y) y[-1,])
+
+## removing spaces from all the column names (manually for laziness)
+colnames<-c("Trialtime","Recordingtime","Xcenter","Ycenter","Area","Areachange","Elongation","Distancemoved","Velocity","Movement(Moving/Center-point)","Movement(NotMoving/Center-point)","Treated")
+rawdatattdark2 <- lapply(rawdatattdark, setNames, colnames)
+
+rm(rawdata, rawdatat, rawdatattdark)
+############ [Trial 3] ############
+
+## reading in all 96 sheets from the excel sheet
+rawdata <- lapply(1:96, function(i) read_excel("Raw data-Startle response s2b 26-10-23-Trial     2.xlsx", sheet = i, skip = 36))
+
+## removing the first row with the units and the second row which is the positions at trial start (aka no movement to track)
+rawdatat <- lapply(rawdata, function(y) y[-1,])
+rawdatattdark <- lapply(rawdatat, function(y) y[-1,])
+
+## removing spaces from all the column names (manually for laziness)
+colnames<-c("Trialtime","Recordingtime","Xcenter","Ycenter","Area","Areachange","Elongation","Distancemoved","Velocity","Movement(Moving/Center-point)","Movement(NotMoving/Center-point)","Treated")
+rawdatattdark3 <- lapply(rawdatattdark, setNames, colnames)
+
+rm(rawdata, rawdatat, rawdatattdark)
+```
+
+##### Actually analyzing
+
+```{r}
+########################### Stag2b dark analysis
+## Subsetting the first 48 samples which are stag2b
+s2bdatadark <- c(rawdatattdark1[c(1:48)], rawdatattdark2[c(1:48)], rawdatattdark3[c(1:48)])
+
+
+## Make dataframe of velocity of S2b larvae (25 fps)
+trialtime <- s2bdatadark[[1]][["Trialtime"]]
+s2bdatadark <- lapply(s2bdatadark, select, Distancemoved)
+s2bvelocitydatadark <- as.data.frame(s2bdatadark)
+rownames(s2bvelocitydatadark) <- trialtime
+
+
+## Creating and applying a function to do this repeatedly:
+## rowsum(as.numeric(s2bvelocitydatadark[,1]), as.numeric(gl(nrow(s2bvelocitydatadark), 25, nrow(s2bvelocitydatadark))))
+## Creates a new dataframe with the sum of every 25 rows, the row names are now recording times rather then trialtimes
+
+s2bvelocitydatadarksec <- apply(s2bvelocitydatadark, 2, function(x) rowsum(as.numeric(x), as.numeric(gl(nrow(s2bvelocitydatadark), 25, nrow(s2bvelocitydatadark)))))
+s2bvelocitydatadarksec<- data.frame(s2bvelocitydatadarksec) 
+
+```
+
+
+```{r}
+########################### Stag2b light analysis
+## Subsetting the first 48 samples which are stag2b
+s2bdatalight <- c(rawdatattlight1[c(1:48)], rawdatattlight2[c(1:48)], rawdatattlight3[c(1:48)])
+
+
+## Make dataframe of velocity of S2b larvae (25 fps)
+trialtime <- s2bdatalight[[1]][["Trialtime"]]
+s2bdatalight <- lapply(s2bdatalight, select, Distancemoved)
+s2bvelocitydatalight <- as.data.frame(s2bdatalight)
+rownames(s2bvelocitydatalight) <- trialtime
+
+
+## Creating and applying a function to do this repeatedly:
+## rowsum(as.numeric(s2bvelocitydatalight[,1]), as.numeric(gl(nrow(s2bvelocitydatalight), 25, nrow(s2bvelocitydatalight))))
+## Creates a new dataframe with the sum of every 25 rows, the row names are now recording times rather then trialtimes
+
+s2bvelocitydatalightsec <- apply(s2bvelocitydatalight, 2, function(x) rowsum(as.numeric(x), as.numeric(gl(nrow(s2bvelocitydatalight), 25, nrow(s2bvelocitydatalight)))))
+s2bvelocitydatalightsec<- data.frame(s2bvelocitydatalightsec)
+
+# s2bvelocitydatalightsec$trialtime<-rownames(s2bvelocitydatalightsec)
+
+```
+
+```{r}
+########################### wik light analysis
+## Subsetting the first 48 samples which are wik
+wikdatalight <- c(rawdatattlight1[c(49:96)], rawdatattlight2[c(49:96)], rawdatattlight3[c(49:96)])
+
+
+## Make dataframe of velocity of wik larvae (25 fps)
+trialtime <- wikdatalight[[1]][["Trialtime"]]
+wikdatalight <- lapply(wikdatalight, select, Distancemoved)
+wikvelocitydatalight <- as.data.frame(wikdatalight)
+rownames(wikvelocitydatalight) <- trialtime
+
+
+## Creating and applying a function to do this repeatedly:
+## rowsum(as.numeric(wikvelocitydatalight[,1]), as.numeric(gl(nrow(wikvelocitydatalight), 25, nrow(wikvelocitydatalight))))
+## Creates a new dataframe with the sum of every 25 rows, the row names are now recording times rather then trialtimes
+
+wikvelocitydatalightsec <- apply(wikvelocitydatalight, 2, function(x) rowsum(as.numeric(x), as.numeric(gl(nrow(wikvelocitydatalight), 25, nrow(wikvelocitydatalight)))))
+wikvelocitydatalightsec<- data.frame(wikvelocitydatalightsec)
+
+## wikvelocitydatalightsec$trialtime<-rownames(wikvelocitydatalightsec)
+
+```
+
+```{r}
+########################### wik dark analysis
+## Subsetting the first 48 samples which are wik
+wikdatadark <- c(rawdatattdark1[c(49:96)], rawdatattdark2[c(49:96)], rawdatattdark3[c(49:96)])
+
+
+## Make dataframe of velocity of wik larvae (25 fps)
+trialtime <- wikdatadark[[1]][["Trialtime"]]
+wikdatadark <- lapply(wikdatadark, select, Distancemoved)
+wikvelocitydatadark <- as.data.frame(wikdatadark)
+rownames(wikvelocitydatadark) <- trialtime
+
+
+## Creating and applying a function to do this repeatedly:
+## rowsum(as.numeric(wikvelocitydatadark[,1]), as.numeric(gl(nrow(wikvelocitydatadark), 25, nrow(wikvelocitydatadark))))
+## Creates a new dataframe with the sum of every 25 rows, the row names are now recording times rather then trialtimes
+
+wikvelocitydatadarksec <- apply(wikvelocitydatadark, 2, function(x) rowsum(as.numeric(x), as.numeric(gl(nrow(wikvelocitydatadark), 25, nrow(wikvelocitydatadark)))))
+wikvelocitydatadarksec<- data.frame(wikvelocitydatadarksec)
+
+## wikvelocitydatadarksec$trialtime<-rownames(wikvelocitydatadarksec)
+
+```
+
+```{r}
+# Binarising this data and making a dataframe out of the summed binaries to provide the number of fish moving at each time point
+## LIGHT
+s2bvelocitydatalightsecbin <- ifelse(s2bvelocitydatalightsec > 5,1,0)
+wikvelocitydatalightsecbin <- ifelse(wikvelocitydatalightsec > 5,1,0)
+
+startlecounts <- data.frame(rowSums(s2bvelocitydatalightsecbin), rowSums(wikvelocitydatalightsecbin))
+startlecounts$trialtime<-rownames(startlecounts)
+colnames(startlecounts) <- c("S2B","WIK","trialtime")
+
+startlepropslight <- mutate(startlecounts[,1:2], startlecounts[,1:2]/144)
+startlepropslight$trialtime<-rownames(startlepropslight)
+
+## DARK
+s2bvelocitydatadarksecbin <- ifelse(s2bvelocitydatadarksec > 5,1,0)
+wikvelocitydatadarksecbin <- ifelse(wikvelocitydatadarksec > 5,1,0)
+
+startlecounts <- data.frame(rowSums(s2bvelocitydatadarksecbin), rowSums(wikvelocitydatadarksecbin))
+startlecounts$trialtime<-rownames(startlecounts)
+colnames(startlecounts) <- c("S2B","WIK","trialtime")
+
+startlepropsdark <- mutate(startlecounts[,1:2], startlecounts[,1:2]/144)
+startlepropsdark$trialtime<-rownames(startlepropsdark)
+
+rm(startlecounts, startleprops)
+
+rm(s2bvelocitydatadark,s2bvelocitydatalight,wikvelocitydatadark,wikvelocitydatalight)
+
+# little object with flash timings for plottings
+darkflashes <- c(1800,1830,1860,1890,1920)
+
+```
+
+```{r}
+
+ggplot(melt(startlepropslight), aes(x= as.numeric(trialtime)-1, y=value, group=variable, colour = variable, alpha=0.5))+
+    geom_line(lwd = 1) +
+    geom_point(data= subset(melt(startlepropslight), trialtime == c(1801)), cex=3 ) +
+    geom_point(data= subset(melt(startlepropslight), trialtime == c(1831)), cex=3 ) +
+    geom_point(data= subset(melt(startlepropslight), trialtime == c(1861)), cex=3 ) +
+    geom_point(data= subset(melt(startlepropslight), trialtime == c(1891)), cex=3 ) +
+    geom_point(data= subset(melt(startlepropslight), trialtime == c(1921)), cex=3 ) +
+    ggtitle("Dark flash response") +
+    xlim(1750, 1950) +
+    ylim(0, 1) +
+    xlab("Trial Time (s)")+
+    ylab("Proportion of fish active")+
+    labs(colour = "Genotype") +
+    guides(alpha = "none") +
+    theme(axis.line = element_line(color='black'), 
+          panel.grid.major = element_blank(), 
+          panel.grid.minor = element_blank(), 
+          panel.background = element_blank(),
+          axis.title = element_text(size=16, face="bold"),
+          axis.text = element_text(size=14),
+          legend.position = "bottom") +
+    scale_color_manual(values=c("#9999FF", "black")) +
+    geom_vline(xintercept = darkflashes, col = "black", lwd = 1.5, alpha =0.1)
+ggsave("Combineddarkflashproportions.pdf", dpi = "retina")
+
+```
+
+```{r}
+
+ggplot(melt(startlepropsdark), aes(x= as.numeric(trialtime)-1, y=value, group=variable, colour = variable, alpha=0.5))+
+    geom_line(lwd = 1) +
+    geom_point(data= subset(melt(startlepropsdark), trialtime == c(1801)), cex=3 ) +
+    geom_point(data= subset(melt(startlepropsdark), trialtime == c(1831)), cex=3 ) +
+    geom_point(data= subset(melt(startlepropsdark), trialtime == c(1861)), cex=3 ) +
+    geom_point(data= subset(melt(startlepropsdark), trialtime == c(1891)), cex=3 ) +
+    geom_point(data= subset(melt(startlepropsdark), trialtime == c(1921)), cex=3 ) +
+    ggtitle("Light flash response") +
+    xlim(1750, 1950) +
+    ylim(0, 1) +
+    xlab("Trial Time (s)")+
+    ylab("Proportion of fish active")+
+    labs(colour = "Genotype") +
+    guides(alpha = "none") +
+    theme(axis.line = element_line(color='black'), 
+          panel.grid.major = element_blank(), 
+          panel.grid.minor = element_blank(), 
+          panel.background = element_rect(fill = '#ebe8e8'),
+          axis.title = element_text(size=16, face="bold"),
+          axis.text = element_text(size=14),
+          legend.position = "bottom") +
+    scale_color_manual(values=c("#9999FF", "black")) +
+    geom_vline(xintercept = darkflashes, col = "white", lwd = 1.5, alpha =0.5)
+ggsave("Combinedlightflashproportions.pdf", dpi = "retina")
+
+```
+
+```{r}
+# Average startle
+startlecounts <- data.frame(colSums(wikvelocitydatalightsecbin[c(1801,1831,1861,1891,1921),]), colSums(s2bvelocitydatalightsecbin[c(1801,1831,1861,1891,1921),]))
+colnames(startlecounts) <- c("WIK","S2B")
+startleprops <- startlecounts
+
+ggplot(melt(startleprops), aes(x=variable, y=value, colour=variable)) +
+  geom_boxplot(outlier.size = 0.5)+
+   ggtitle("Startle activity") +
+    xlab("Genotype") +
+    ylab("Number of startles active")+
+   theme(axis.line = element_line(color='black'), 
+          panel.grid.major = element_blank(), 
+          panel.grid.minor = element_blank(), 
+          panel.background = element_blank(),
+          axis.title = element_text(size=16, face="bold"),
+          axis.text = element_text(size=14),
+          legend.position = "bottom") +
+    ylim(0,1) +
+    scale_color_manual(values=c("black", "#9999FF"))
+
+rm(startlecounts,startleprops)
+
+# Average post startle
+startlecounts <- data.frame(
+  colSums(wikvelocitydatalightsecbin[c(1802:1830,1832:1860,1862:1890,1922:1950),]),
+  colSums(s2bvelocitydatalightsecbin[c(1802:1830,1832:1860,1862:1890,1922:1950),]))
+colnames(startlecounts) <- c("WIK","S2B")
+startleprops <- startlecounts/150
+
+ggplot(melt(startleprops), aes(x=variable, y=value, colour=variable)) +
+  geom_boxplot(outlier.size = 0.5)+
+   ggtitle("Post startle activity") +
+    xlab("Genotype") +
+    ylab("Proportion of seconds active")+
+   theme(axis.line = element_line(color='black'), 
+          panel.grid.major = element_blank(), 
+          panel.grid.minor = element_blank(), 
+          panel.background = element_blank(),
+          axis.title = element_text(size=16, face="bold"),
+          axis.text = element_text(size=14),
+          legend.position = "bottom") +
+    ylim(0,1) +
+    scale_color_manual(values=c("black", "#9999FF"))
+
+# rm(startlecounts,startleprops)
+```
+
+```{r}
+# Baseline statistics
+s2bvelocitydatalightsecbin <- ifelse(s2bvelocitydatadarksec > 5,1,0)
+wikvelocitydatalightsecbin <- ifelse(wikvelocitydatadarksec > 5,1,0)
+
+# Baseline activity
+startlecounts <- data.frame(colSums(wikvelocitydatadarksecbin[1:1800,]), colSums(s2bvelocitydatadarksecbin[1:1800,]))
+colnames(startlecounts) <- c("WIK","S2B")
+startleprops <- startlecounts/1800
+
+t.test(x=startlecounts$WIK, y=startlecounts$S2B, alternative = "two.sided")
+
+ggplot(melt(startleprops), aes(x=variable, y=value, colour=variable)) +
+  geom_boxplot(outlier.size = 0.5)+
+    xlab("Genotype") +
+    ylab("Proportion of seconds active")+
+   theme(axis.line = element_line(color='black'), 
+          panel.grid.major = element_blank(), 
+          panel.grid.minor = element_blank(), 
+          panel.background = element_blank(),
+          axis.title = element_text(size=16, face="bold"),
+          axis.text = element_text(size=14),
+          legend.position = "bottom") +
+    ylim(0,1) +
+    scale_color_manual(values=c("black", "#9999FF")) +
+        geom_signif(
+    y_position = c(0.6, 0.6), xmin = c(1), xmax = c(2),
+    annotation = c("0.2028"), tip_length = 0) +
+    geom_signif(
+    y_position = 1.2, tip_length = 0, vjust = 0.2) +
+    theme(legend.text = element_text(size = 16)) +
+    theme(legend.title = element_text(size=0, face = "bold")) +
+    scale_x_discrete(labels=c('Wild Type', 'Stag2b (-/-)'))
+ggsave("baseline activity dark.pdf", dpi = "retina")
+
+rm(startlecounts,startleprops)
+
+## Light test statistics from mendes et al.
+s2bvelocitydatalightsecbin <- ifelse(s2bvelocitydatalightsec > 5,1,0)
+wikvelocitydatalightsecbin <- ifelse(wikvelocitydatalightsec > 5,1,0)
+
+# Baseline activity
+startlecounts <- data.frame(colSums(wikvelocitydatalightsecbin[1:1800,]), colSums(s2bvelocitydatalightsecbin[1:1800,]))
+colnames(startlecounts) <- c("WIK","S2B")
+startleprops <- startlecounts/1800
+
+t.test(x=startlecounts$WIK, y=startlecounts$S2B, alternative = "two.sided")
+
+ggplot(melt(startleprops), aes(x=variable, y=value, colour=variable)) +
+  geom_boxplot(outlier.size = 0.5)+
+    xlab("Genotype") +
+    ylab("Proportion of seconds active")+
+   theme(axis.line = element_line(color='black'), 
+          panel.grid.major = element_blank(), 
+          panel.grid.minor = element_blank(), 
+          panel.background = element_blank(),
+          axis.title = element_text(size=16, face="bold"),
+          axis.text = element_text(size=14),
+          legend.position = "bottom") +
+    ylim(0,1) +
+    scale_color_manual(values=c("black", "#9999FF")) +
+      geom_signif(
+    y_position = c(1, 1), xmin = c(1), xmax = c(2),
+    annotation = c("9.853e-07"), tip_length = 0) +
+    geom_signif(
+    y_position = 1.2, tip_length = 0, vjust = 0.2) +
+    theme(legend.text = element_text(size = 16)) +
+    theme(legend.title = element_text(size=0, face = "bold")) +
+    scale_x_discrete(labels=c('Wild Type', 'Stag2b (-/-)'))
+                       
+                       
+ggsave("baseline activity light.pdf", dpi = "retina")
+
+rm(startlecounts,startleprops)
+
+```
+
+
+```{r}
+# light acclimated baseline versus post-startle activity
+
+startlecounts <- data.frame(
+  colSums(wikvelocitydatalightsecbin[1:1800,])/1800,
+  colSums(wikvelocitydatalightsecbin[c(1802:1830,1832:1860,1862:1890,1922:1950),])/145,
+  colSums(s2bvelocitydatalightsecbin[1:1800,])/1800,
+  colSums(s2bvelocitydatalightsecbin[c(1802:1830,1832:1860,1862:1890,1922:1950),])/145
+                                      )
+
+colnames(startlecounts) <- c("WIK_Baseline", "WIK_Post_startle","S2B_Baseline", "S2B_Post_startle")
+startleprops <- melt(startlecounts)
+startleprops$genotype <- c(rep("WIK", 288),rep("S2B", 288))
+startleprops$value <- replace_na(startleprops$value, 0)
+startleprops$variable <- c(rep("Baseline", 144),rep("Post Startle", 144),rep("Baseline", 144),rep("Post Startle", 144))
+
+
+t.test(x=startlecounts$WIK_Baseline, y=startlecounts$WIK_Post_startle, paired = T, alternative = "two.sided")
+t.test(x=startlecounts$S2B_Baseline, y=startlecounts$S2B_Post_startle, paired = T, alternative = "two.sided")
+
+p <-ggplot(startleprops, aes(x=factor(genotype, levels=c('WIK', 'S2B')), y=value)) +
+  geom_boxplot(aes(color = variable),
+               position = position_dodge(width = .9),
+               outlier.size = 0.3)+
+   ggtitle("Light acclimatized baseline versus post startle activity") +
+    xlab("Genotype") +
+    ylab("Proportion of seconds active")+
+   theme(axis.line = element_line(color='black'), 
+          panel.grid.major = element_blank(), 
+          panel.grid.minor = element_blank(), 
+          panel.background = element_blank(),
+          axis.title = element_text(size=16, face="bold"),
+          axis.text = element_text(size=14),
+          legend.position = "bottom") +
+          ylim(0,1.3) +
+          scale_color_manual(values=c("black", "red")) 
+  
+p+  
+geom_signif(
+    y_position = c(1.05, 1.05), xmin = c(0.8, 1.8), xmax = c(1.2, 2.2),
+    annotation = c("2.6e-05", "0.53"), tip_length = 0) +
+    geom_signif(
+    comparisons = list(c("S2B", "WIK")),
+    y_position = 1.2, tip_length = 0, vjust = 0.2) +
+    theme(legend.text = element_text(size = 16)) +
+    theme(legend.title = element_text(size=0, face = "bold")) +
+    scale_x_discrete(labels=c('Wild Type', 'Stag2b (-/-)'))
+
+ggsave("base_startle_light.pdf", dpi = "retina")
+
+```
+
+```{r}
+# dark aclimated baseline versus post-startle activity
+
+startlecounts <- data.frame(
+  colSums(wikvelocitydatadarksecbin[1:1800,])/1800,
+  colSums(wikvelocitydatadarksecbin[c(1803:1830,1833:1860,1863:1890,1923:1950),])/140,
+  colSums(s2bvelocitydatadarksecbin[1:1800,])/1800,
+  colSums(s2bvelocitydatadarksecbin[c(1803:1830,1833:1860,1863:1890,1923:1950),])/140
+                                      )
+
+colnames(startlecounts) <- c("WIK_Baseline", "WIK_Post_startle","S2B_Baseline", "S2B_Post_startle")
+startleprops <- melt(startlecounts)
+startleprops$genotype <- c(rep("WIK", 288),rep("S2B", 288))
+startleprops$value <- replace_na(startleprops$value, 0)
+startleprops$variable <- c(rep("Baseline", 144),rep("Post Startle", 144),rep("Baseline", 144),rep("Post Startle", 144))
+
+t.test(x=startlecounts$WIK_Baseline, y=startlecounts$WIK_Post_startle, paired = T, alternative = "two.sided")
+t.test(x=startlecounts$S2B_Baseline, y=startlecounts$S2B_Post_startle, paired = T, alternative = "two.sided")
+
+p <-ggplot(startleprops, aes(x=factor(genotype, levels=c('WIK', 'S2B')), y=value)) +
+  geom_boxplot(aes(color = variable),
+               position = position_dodge(width = .9),
+               outlier.size = 0.3)+
+   ggtitle("Dark acclimatized baseline versus post startle activity") +
+    xlab("Genotype") +
+    ylab("Proportion of seconds active")+
+   theme(axis.line = element_line(color='black'), 
+          panel.grid.major = element_blank(), 
+          panel.grid.minor = element_blank(), 
+          panel.background = element_blank(),
+          axis.title = element_text(size=16, face="bold"),
+          axis.text = element_text(size=14),
+          legend.position = "bottom") +
+          ylim(0,1.3) +
+          scale_color_manual(values=c("black", "red")) 
+  
+p+  
+geom_signif(
+    y_position = c(1.05, 1.05), xmin = c(0.8, 1.8), xmax = c(1.2, 2.2),
+    annotation = c("p < 2.2e-16", "0.097"), tip_length = 0) +
+    geom_signif(
+    comparisons = list(c("S2B", "WIK")),
+    y_position = 1.2, tip_length = 0, vjust = 0.2) +
+    theme(legend.text = element_text(size = 16)) +
+    theme(legend.title = element_text(size=0, face = "bold")) +
+    scale_x_discrete(labels=c('Wild Type', 'Stag2b (-/-)'))
+
+ggsave("base_startle_dark.pdf", dpi = "retina")
+
+```
+
+```{r}
+# Heatmap for startle responsiveness LIGHT
+## Do all the fish respond to atleast some startles or are some mutants completely unresponsive?
+## S2B
+# pdf("light responsiveness heatmap.pdf")
+
+s2bflashperiods <-s2bvelocitydatalightsec[darkflashes+1,]
+s2bflashtrans = t(s2bflashperiods)
+flash <- c("Flash 1", "Flash 2", "Flash 3", "Flash 4", "Flash 5")       # Names of flashes
+colnames(s2bflashtrans) <- flash
+
+# making the melt and fixing up the numbers
+ms2bflashtrans <- melt(s2bflashtrans)
+ms2bflashtrans$Var1 <- str_replace(ms2bflashtrans$Var1, "Distancemoved.", "")
+ms2bflashtrans$Var1 <- str_replace(ms2bflashtrans$Var1, "Distancemoved", "0")
+ms2bflashtrans$Var1 <- as.numeric(ms2bflashtrans$Var1)+1
+
+
+### WIK
+wikflashperiods <-wikvelocitydatalightsec[darkflashes+1,]
+wikflashtrans = t(wikflashperiods)
+flash <- c("Flash 1", "Flash 2", "Flash 3", "Flash 4", "Flash 5")       # Names of flashes
+colnames(wikflashtrans) <- flash
+
+# making the melt and fixing up the numbers
+mwikflashtrans <- melt(wikflashtrans)
+mwikflashtrans$Var1 <- str_replace(mwikflashtrans$Var1, "Distancemoved.", "")
+mwikflashtrans$Var1 <- str_replace(mwikflashtrans$Var1, "Distancemoved", "0")
+mwikflashtrans$Var1 <- as.numeric(mwikflashtrans$Var1)+1
+
+
+rng = range(c(ms2bflashtrans$value), (mwikflashtrans$value))
+## S2B plotting
+ps2b<- ggplot(ms2bflashtrans, aes(x = Var2,y = reorder(Var1,value) , fill= value)) + 
+  geom_tile() +
+    scale_fill_gradient2(low="white", mid ="lightblue", high="purple", #colors in the scale
+                   midpoint=mean(rng),    #same midpoint for plots (mean of the range)
+                   limits=c(floor(rng[1]), ceiling(rng[2])))+
+  labs(title = "Stag2b (-/-) mutant flash responsiveness", x="", y="Fish number") +
+  guides(fill = guide_colourbar(title = "Distance \nmoved \n(mm)",barwidth = 4,barheight = 20)) +
+  theme(title = element_text(size=16, face="bold"),
+        axis.title = element_text(size=14, face="bold"),
+        axis.label = element_text(size=14),
+        axis.text.x = element_text(size=14),
+        axis.text.y = element_text(size=4),
+        legend.title = element_text(size=14, face = "bold"),
+        legend.text = element_text(size = 14)
+        )
+
+## WIK plotting
+pwik <- ggplot(mwikflashtrans, aes(x = Var2,y = reorder(Var1,value) , fill= value)) + 
+  geom_tile() +
+    scale_fill_gradient2(low="white", mid = "lightblue", high="purple", #colors in the scale
+                   midpoint=mean(rng),    #same midpoint for plots (mean of the range)
+                   limits=c(floor(rng[1]), ceiling(rng[2])))+
+  labs(title = "Wild type flash responsiveness", x="", y="Fish number") +
+  guides(fill = guide_colourbar(title = "Distance \nmoved \n(mm)",barwidth = 4,barheight = 20)) +
+  theme(title = element_text(size=16, face="bold"),
+        axis.title = element_text(size=14, face="bold"), 
+        axis.label = element_text(size=14),
+        axis.text.x = element_text(size=14),
+        axis.text.y = element_text(size=4),
+        legend.title = element_text(size=14, face = "bold"),
+        legend.text = element_text(size = 14)
+        )
+
+plot_grid(pwik, ps2b, ncol = 2, nrow = 1)
+ggsave("startle_responsiveness_light.pdf", dpi = "retina", width = 15, height =7)
+
+```
+
+
+```{r}
+# Heatmap for startle responsiveness dark
+## Do all the fish respond to atleast some startles or are some mutants completely unresponsive?
+## S2B
+# pdf("dark responsiveness heatmap.pdf")
+
+s2bflashperiods <-s2bvelocitydatadarksec[darkflashes+1,]
+s2bflashtrans = t(s2bflashperiods)
+flash <- c("Flash 1", "Flash 2", "Flash 3", "Flash 4", "Flash 5")       # Names of flashes
+colnames(s2bflashtrans) <- flash
+
+# making the melt and fixing up the numbers
+ms2bflashtrans <- melt(s2bflashtrans)
+ms2bflashtrans$Var1 <- str_replace(ms2bflashtrans$Var1, "Distancemoved.", "")
+ms2bflashtrans$Var1 <- str_replace(ms2bflashtrans$Var1, "Distancemoved", "0")
+ms2bflashtrans$Var1 <- as.numeric(ms2bflashtrans$Var1)+1
+
+
+### WIK
+wikflashperiods <-wikvelocitydatadarksec[darkflashes+1,]
+wikflashtrans = t(wikflashperiods)
+flash <- c("Flash 1", "Flash 2", "Flash 3", "Flash 4", "Flash 5")       # Names of flashes
+colnames(wikflashtrans) <- flash
+
+# making the melt and fixing up the numbers
+mwikflashtrans <- melt(wikflashtrans)
+mwikflashtrans$Var1 <- str_replace(mwikflashtrans$Var1, "Distancemoved.", "")
+mwikflashtrans$Var1 <- str_replace(mwikflashtrans$Var1, "Distancemoved", "0")
+mwikflashtrans$Var1 <- as.numeric(mwikflashtrans$Var1)+1
+
+
+rng = range(c(ms2bflashtrans$value), (mwikflashtrans$value))
+## S2B plotting
+ps2b<- ggplot(ms2bflashtrans, aes(x = Var2,y = reorder(Var1,value) , fill= value)) + 
+  geom_tile() +
+    scale_fill_gradient2(low="white", mid ="lightblue", high="purple", #colors in the scale
+                   midpoint=mean(rng),    #same midpoint for plots (mean of the range)
+                   limits=c(floor(rng[1]), ceiling(rng[2])))+
+  labs(title = "Stag2b (-/-) mutant flash responsiveness", x="", y="Fish number") +
+  guides(fill = guide_colourbar(title = "Distance \nmoved \n(mm)",barwidth = 4,barheight = 20)) +
+  theme(title = element_text(size=16, face="bold"),
+        axis.title = element_text(size=14, face="bold"),
+        axis.label = element_text(size=14),
+        axis.text.x = element_text(size=14),
+        axis.text.y = element_text(size=4),
+        legend.title = element_text(size=14, face = "bold"),
+        legend.text = element_text(size = 14)
+        )
+
+## WIK plotting
+pwik <- ggplot(mwikflashtrans, aes(x = Var2,y = reorder(Var1,value) , fill= value)) + 
+  geom_tile() +
+    scale_fill_gradient2(low="white", mid = "lightblue", high="purple", #colors in the scale
+                   midpoint=mean(rng),    #same midpoint for plots (mean of the range)
+                   limits=c(floor(rng[1]), ceiling(rng[2])))+
+  labs(title = "Wild type flash responsiveness", x="", y="Fish number") +
+  guides(fill = guide_colourbar(title = "Distance \nmoved \n(mm)",barwidth = 4,barheight = 20)) +
+  theme(title = element_text(size=16, face="bold"),
+        axis.title = element_text(size=14, face="bold"), 
+        axis.label = element_text(size=14),
+        axis.text.x = element_text(size=14),
+        axis.text.y = element_text(size=4),
+        legend.title = element_text(size=14, face = "bold"),
+        legend.text = element_text(size = 14)
+        )
+
+plot_grid(pwik, ps2b, ncol = 2, nrow = 1)
+ggsave("startle_responsiveness_dark.pdf", dpi = "retina", width = 15, height =7)
+
+```
+
+
+```{r}
+# Heatmap for startle responsiveness DARK
+## Do all the fish respond to atleast some startles or are some mutants completely unresponsive?
+## S2B
+pdf("dark responsiveness heatmap.pdf")
+
+s2bflashperiods <-s2bvelocitydatadarksec[darkflashes+1,]
+s2bflashtrans = t(s2bflashperiods)
+flash <- c("Flash 1", "Flash 2", "Flash 3", "Flash 4", "Flash 5")       # Names of flashes
+colnames(s2bflashtrans) <- flash
+
+# making the melt and fixing up the numbers
+ms2bflashtrans <- melt(s2bflashtrans)
+ms2bflashtrans$Var1 <- str_replace(ms2bflashtrans$Var1, "Distancemoved.", "")
+ms2bflashtrans$Var1 <- str_replace(ms2bflashtrans$Var1, "Distancemoved", "0")
+ms2bflashtrans$Var1 <- as.numeric(ms2bflashtrans$Var1)+1
+
+rng = range(c(ms2bflashtrans$value), (mwikflashtrans$value))
+
+ggplot(ms2bflashtrans, aes(x = Var2,y = reorder(Var1,value) , fill= value)) + 
+  geom_tile() +
+    scale_fill_gradient2(low="white", mid ="lightblue", high="purple", #colors in the scale
+                   midpoint=mean(rng),    #same midpoint for plots (mean of the range)
+                   limits=c(floor(rng[1]), ceiling(rng[2])))+
+  labs(title = "Stag2b (-/-) mutant flash responsiveness", x="", y="Fish number") +
+  guides(fill = guide_colourbar(title = "Distance \nmoved \n(mm)",barwidth = 4,barheight = 20)) +
+  theme(title = element_text(size=16, face="bold"),
+        axis.title = element_text(size=14, face="bold"),
+        axis.label = element_text(size=14),
+        axis.text.x = element_text(size=14),
+        axis.text.y = element_text(size=4),
+        legend.title = element_text(size=14, face = "bold"),
+        legend.text = element_text(size = 14)
+        )
+
+
+
+
+### WIK
+wikflashperiods <-wikvelocitydatadarksec[darkflashes+1,]
+wikflashtrans = t(wikflashperiods)
+flash <- c("Flash 1", "Flash 2", "Flash 3", "Flash 4", "Flash 5")       # Names of flashes
+colnames(wikflashtrans) <- flash
+
+# making the melt and fixing up the numbers
+mwikflashtrans <- melt(wikflashtrans)
+mwikflashtrans$Var1 <- str_replace(mwikflashtrans$Var1, "Distancemoved.", "")
+mwikflashtrans$Var1 <- str_replace(mwikflashtrans$Var1, "Distancemoved", "0")
+mwikflashtrans$Var1 <- as.numeric(mwikflashtrans$Var1)+1
+
+
+ggplot(mwikflashtrans, aes(x = Var2,y = reorder(Var1,value) , fill= value)) + 
+  geom_tile() +
+    scale_fill_gradient2(low="white", mid = "lightblue", high="purple", #colors in the scale
+                   midpoint=mean(rng),    #same midpoint for plots (mean of the range)
+                   limits=c(floor(rng[1]), ceiling(rng[2])))+
+  labs(title = "Wild type flash responsiveness", x="", y="Fish number") +
+  guides(fill = guide_colourbar(title = "Distance \nmoved \n(mm)",barwidth = 4,barheight = 20)) +
+  theme(title = element_text(size=16, face="bold"),
+        axis.title = element_text(size=14, face="bold"), 
+        axis.label = element_text(size=14),
+        axis.text.x = element_text(size=14),
+        axis.text.y = element_text(size=4),
+        legend.title = element_text(size=14, face = "bold"),
+        legend.text = element_text(size = 14)
+        )
+
+```

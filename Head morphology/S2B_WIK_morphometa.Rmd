@@ -1,0 +1,187 @@
+---
+title: "S2B_WIK_morphometa"
+author: "Daniel"
+date: "2024-01-10"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(tidyverse)
+library(viridis)
+library(ggstatsplot)
+```
+
+head width
+```{r}
+# make a list of all csvs that end in ""S2B head width raw.csv"" in the directory and subdirectories
+S2Bheadwidthl <- list.files(pattern = "S2B head width raw.csv$", recursive = TRUE)
+#read them into one dataframe
+S2Bheadwidth <- read_csv(S2Bheadwidthl)
+
+
+# make a list of all csvs that end in ""WIK head width raw.csv"" in the directory and subdirectories
+WIKheadwidthl <- list.files(pattern = "WIK head width raw.csv$", recursive = TRUE)
+#read them into one dataframe
+WIKheadwidth <- read_csv(WIKheadwidthl)
+
+# combining the two dataframes and then pivoting to te right format for violin plotting 
+headwidth <- data.frame("aStag2b_wts" = WIKheadwidth$Length,"bStag2b_hom" = S2Bheadwidth$Length)
+headwidth <- pivot_longer(headwidth, cols = 1:2)
+
+# Violin plotting
+plt2 <- ggbetweenstats(
+  data = headwidth,
+  x = name,
+  y = value
+)
+plt2 <- plt2 + 
+  # Add labels and title
+  labs(
+    x = "Genotype",
+    y = "Head width (µm)",
+    title = ""
+  ) + theme(axis.text=element_text(size=14),
+        axis.title=element_text(size=14,face="bold"))
+
+#save the plot
+
+ggsave(
+  "s2b_wik_meta_head_width_violin.png",
+  plt2,
+  dpi = 150
+)
+```
+
+nose to fin length
+```{r}
+# make a list of all csvs that end in ""S2B nose to fin length raw.csv"" in the directory and subdirectories
+S2Bnosetofinlengthl <- list.files(pattern = "S2B nose to fin length raw.csv$", recursive = TRUE)
+#read them into one dataframe
+S2Bnosetofinlength <- read_csv(S2Bnosetofinlengthl)
+
+
+# make a list of all csvs that end in ""WIK nose to fin length raw.csv"" in the directory and subdirectories
+WIKnosetofinlengthl <- list.files(pattern = "WIK nose to fin length raw.csv$", recursive = TRUE)
+#read them into one dataframe
+WIKnosetofinlength <- read_csv(WIKnosetofinlengthl)
+
+# combining the two dataframes and then pivoting to te right format for violin plotting 
+nosetofinlength <- data.frame("aStag2b_wts" = WIKnosetofinlength$Length, "bStag2b_hom" = S2Bnosetofinlength$Length)
+nosetofinlength <- pivot_longer(nosetofinlength, cols = 1:2)
+
+# Violin plotting
+plt2 <- ggbetweenstats(
+  data = nosetofinlength,
+  x = name,
+  y = value
+)
+plt2 <- plt2 + 
+  # Add labels and title
+  labs(
+    x = "Genotype",
+    y = "Nose to fin length (µm)",
+    title = ""
+  ) + theme(axis.text=element_text(size=14),
+        axis.title=element_text(size=14,face="bold"))
+
+#save the plot
+
+ggsave(
+  "s2b_wik_meta_nose_to_fin_length_violin.png",
+  plt2,
+  dpi = 150
+)
+```
+
+inter eye distance
+```{r}
+# make a list of all csvs that end in ""S2B inter eye distance raw.csv"" in the directory and subdirectories
+S2Bintereyedistancel <- list.files(pattern = "S2B inter eye distance raw.csv$", recursive = TRUE)
+#read them into one dataframe
+S2Bintereyedistance <- read_csv(S2Bintereyedistancel)
+
+
+# make a list of all csvs that end in ""WIK inter eye distance raw.csv"" in the directory and subdirectories
+WIKintereyedistancel <- list.files(pattern = "WIK inter eye distance raw.csv$", recursive = TRUE)
+#read them into one dataframe
+WIKintereyedistance <- read_csv(WIKintereyedistancel)
+
+# combining the two dataframes and then pivoting to te right format for violin plotting 
+intereyedistance <- data.frame("aStag2b_wts" = WIKintereyedistance$Length, "bStag2b_hom" = S2Bintereyedistance$Length)
+intereyedistance <- pivot_longer(intereyedistance, cols = 1:2)
+
+# Violin plotting
+plt2 <- ggbetweenstats(
+  data = intereyedistance,
+  x = name,
+  y = value,
+  pairwise.display = "all",
+  p.adjust.method = "none",
+  centrality.point.args = list(size = 5, color = "black"),
+  bf.message = F,
+  point.args = list(position = ggplot2::position_jitterdodge(dodge.width = 0.6), alpha =
+    0.6, size = 3, stroke = 0, na.rm = TRUE ),
+  palette = "Dark2"
+)
+
+plt2 <- plt2 + 
+  # Add labels and title
+  labs(
+    x = "Genotype",
+    y = "Inter eye distance (µm)",
+    title = ""
+  ) + theme(axis.text=element_text(size=14),
+        axis.title=element_text(size=14,face="bold"))+
+  scale_x_discrete(labels=c("Wild type\n(n=38)", "Stag2b (-/-)\n(n=38)"))
+
+#save the plot
+
+ggsave(
+  "s2b_wik_meta_inter_eye_distance_violin.png",
+  plt2,
+  dpi = 150
+)
+```
+
+```{r}
+# head width
+
+p<-ggplot(headwidth, aes(x=name, y=value, fill=name)) +
+  geom_violin(trim=T, linewidth=1)
+
+ggsave(
+  "s2b_wik_meta_head_width_violin_clean.pdf",
+  p +scale_fill_manual(values=c("grey","#9999FF"))+ theme_classic()+theme(legend.position="none") +geom_boxplot(width=0.1, linewidth=1)+ theme(axis.line = element_line(size = 1, linetype = "solid"))+labs(x = "Genotype", y= "Head width (µm)")
++ylim(400,600),
+  dpi = 300,
+  units = c("mm"),
+  width = 70,
+  height = 70
+)
+# nose to fin length
+p<-ggplot(nosetofinlength, aes(x=name, y=value, fill=name)) +
+  geom_violin(trim=T, linewidth=1)
+ggsave(
+  "s2b_wik_meta_head_length_violin_clean.pdf",
+  p +scale_fill_manual(values=c("grey","#9999FF"))+ theme_classic()+theme(legend.position="none") +geom_boxplot(width=0.1, linewidth=1)+ theme(axis.line = element_line(size = 1, linetype = "solid"))+labs(x = "Genotype", y= "Head length (µm)")
+  +ylim(650,850),
+  dpi = 300,
+  units = c("mm"),
+  width = 70,
+  height = 70
+)
+# inter eye distance
+p<-ggplot(intereyedistance, aes(x=name, y=value, fill=name)) +
+  geom_violin(trim=T, linewidth=1)
+ggsave(
+  "s2b_wik_meta_inter_eye_distance_violin_clean.pdf",
+  p +scale_fill_manual(values=c("grey","#9999FF"))+ theme_classic()+theme(legend.position="none") +geom_boxplot(width=0.1, linewidth=1)+ theme(axis.line = element_line(size = 1, linetype = "solid"))+labs(x = "Genotype", y= "Inter eye distance (µm)")
+  +ylim(50,200),
+  dpi = 300,
+  units = c("mm"),
+  width = 70,
+  height = 70
+)
+```
+

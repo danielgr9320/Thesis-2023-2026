@@ -1,0 +1,439 @@
+---
+title: "R21_WTS_meta"
+author: "Daniel"
+date: "2024-13-08"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(tidyverse)
+library(readxl)
+library(viridis)
+library(reshape2)
+library(viridis)
+library(ggstatsplot)
+library(ggsignif)
+```
+
+### Light analysis and genotyping
+
+```{r dataprocessing, message=FALSE}
+## reading in trial 1 and genotyping
+rawdata1 <- lapply(1:96, function(i) read_excel("Raw data-Startle response r21 8-8-24-Trial     1.xlsx", sheet = i, skip = 38))
+geno1 <- read_tsv("8-8-24_geno 120029.txt", skip = 41)
+geno1 <- filter(geno1, Task == "UNKNOWN")
+geno1v <- geno1$Call[1:96]
+geno1v<- replace_na(geno1v, "WIK")
+
+## reading in trial 2 and genotyping
+rawdata2 <- lapply(1:83, function(i) read_excel("Raw data-Startle response r21 28-8-24-Trial     1.xlsx", sheet = i, skip = 38))
+geno2 <- read_tsv("28-8-24_geno 130106.txt", skip = 41)
+geno2 <- filter(geno2, Task == "UNKNOWN")
+geno2v <- geno2$Call[1:83] #only first 83 wells in this trial had larvae
+geno2v<- replace_na(geno2v, "WIK")
+
+# reading in trial 3 and genotyping
+rawdata3 <- lapply(1:96, function(i) read_excel("Raw data-Startle response r21 3-11-24-Trial     1.xlsx", sheet = i, skip = 38))
+geno3 <- read_tsv("3-11-24_geno 150418.txt", skip = 41)
+geno3 <- filter(geno3, Task == "UNKNOWN")
+geno3 <- geno3[1:64,]
+geno3v <- geno3$Call[1:96] 
+geno3v<- replace_na(geno3v, "WIK")
+```
+
+```{r}
+geno <- (c(geno1v,geno2v,geno3v))
+rawdatat <- (c(rawdata1,rawdata2,rawdata3))
+## removing spaces from all the column names (manually for laziness)
+colunames<-c("Trialtime","Recordingtime","Xcenter","Ycenter","Area","Areachange","Elongation","Distancemoved","Velocity","Movement(Moving/Center-point)","Movement(NotMoving/Center-point)","Treated")
+rawdatat <- lapply(rawdatat, setNames, colunames)
+
+# rm(rawdata1,rawdata2,rawdata3,rawdatat1,rawdatat2,rawdatat3,geno1,geno2,geno3)
+
+```
+
+
+##### Light analysis
+
+```{r rad21 analysis}
+########################### Rad21 analysis
+## Subsetting the samples which are rad21
+r21datalight <- rawdatat[grep(pattern = "Heterozygous Allele 1/Allele 2", x = geno)]
+  
+## Make dataframe of velocity of r21 larvae (25 fps)
+trialtime <- r21datalight[[1]][["Trialtime"]]
+r21datalight <- lapply(r21datalight, select, Distancemoved)
+r21velocitydatalight <- as.data.frame(r21datalight)
+rownames(r21velocitydatalight) <- trialtime
+r21velocitydatalight[r21velocitydatalight=="-"]<-0
+
+## Creating and applying a function to do this repeatedly:
+## rowsum(as.numeric(r21velocitydatalight[,1]), as.numeric(gl(nrow(r21velocitydatalight), 25, nrow(r21velocitydatalight))))
+## Creates a new dataframe with the sum of every 25 rows, the row names are now recording times rather then trialtimes
+
+r21velocitydatalightsec <- apply(r21velocitydatalight, 2, function(x) rowsum(as.numeric(x), as.numeric(gl(nrow(r21velocitydatalight), 25, nrow(r21velocitydatalight)))))
+r21velocitydatalightsec<- data.frame(r21velocitydatalightsec)
+
+# r21velocitydatalightsec$trialtime<-rownames(r21velocitydatalightsec)
+
+```
+
+```{r wts analysis}
+########################## WTS analysis
+## Subsetting the samples which are WTS
+wtsdatalight <- rawdatat[grep(pattern = "Homozygous Allele 1/Allele 1", x = geno)]
+  
+## Make dataframe of velocity of wts larvae (25 fps)
+trialtime <- wtsdatalight[[1]][["Trialtime"]]
+wtsdatalight <- lapply(wtsdatalight, select, Distancemoved)
+wtsvelocitydatalight <- as.data.frame(wtsdatalight)
+rownames(wtsvelocitydatalight) <- trialtime
+wtsvelocitydatalight[wtsvelocitydatalight=="-"]<-0
+## Creating and applying a function to do this repeatedly:
+## rowsum(as.numeric(wtsvelocitydatalight[,1]), as.numeric(gl(nrow(wtsvelocitydatalight), 25, nrow(wtsvelocitydatalight))))
+## Creates a new dataframe with the sum of every 25 rows, the row names are now recording times rather then trialtimes
+
+wtsvelocitydatalightsec <- apply(wtsvelocitydatalight, 2, function(x) rowsum(as.numeric(x), as.numeric(gl(nrow(wtsvelocitydatalight), 25, nrow(wtsvelocitydatalight)))))
+wtsvelocitydatalightsec<- data.frame(wtsvelocitydatalightsec)
+
+# wtsvelocitydatalightsec$trialtime<-rownames(wtsvelocitydatalightsec)
+
+```
+
+```{r WIK analysis}
+########################## WIK analysis
+## Subsetting the samples which are wik
+wikdatalight <- rawdatat[grep(pattern = "WIK", x = geno)]
+  
+## Make dataframe of velocity of wik larvae (25 fps)
+trialtime <- wikdatalight[[1]][["Trialtime"]]
+wikdatalight <- lapply(wikdatalight, select, Distancemoved)
+wikvelocitydatalight <- as.data.frame(wikdatalight)
+rownames(wikvelocitydatalight) <- trialtime
+wikvelocitydatalight[wikvelocitydatalight=="-"]<-0
+## Creating and applying a function to do this repeatedly:
+## rowsum(as.numeric(wikvelocitydatalight[,1]), as.numeric(gl(nrow(wikvelocitydatalight), 25, nrow(wikvelocitydatalight))))
+## Creates a new dataframe with the sum of every 25 rows, the row names are now recording times rather then trialtimes
+
+wikvelocitydatalightsec <- apply(wikvelocitydatalight, 2, function(x) rowsum(as.numeric(x), as.numeric(gl(nrow(wikvelocitydatalight), 25, nrow(wikvelocitydatalight)))))
+wikvelocitydatalightsec<- data.frame(wikvelocitydatalightsec)
+
+# wikvelocitydatalightsec$trialtime<-rownames(wikvelocitydatalightsec)
+
+```
+
+```{r Binarise 0.5mm and proportion}
+# Binarising this data and making a dataframe out of the summed binaries to provide the number of fish moving at each time point 0.5mm/s as threshold
+# unit here is decimillimetres so 5=0.5mm
+r21velocitydatalightsecbin <- ifelse(r21velocitydatalightsec > 5,1,0)
+wtsvelocitydatalightsecbin <- ifelse(wtsvelocitydatalightsec > 5,1,0)
+
+startlecounts <- data.frame(rowSums(r21velocitydatalightsecbin), rowSums(wtsvelocitydatalightsecbin))
+startlecounts$trialtime<-rownames(startlecounts)
+colnames(startlecounts) <- c("r21","wts", "trialtime")
+
+counttablegeno <- table(geno)
+startleprops <- mutate(startlecounts, 
+                       startlecounts$r21/as.numeric(counttablegeno[1]), 
+                       startlecounts$wts/as.numeric(counttablegeno[2]))
+
+colnames(startleprops) <- c("r21c","wtsc","trialtime","R21","WTS")
+
+```
+
+```{r Plot}
+darkflashes <- c(1800,1830,1860,1890,1920)
+
+ggplot(melt(startleprops[,3:5]), aes(x= as.numeric(trialtime)-1, y=value, group=variable, colour = variable, alpha=0.5))+
+    geom_line(lwd = 1) +
+    geom_point(data= subset(melt(startleprops[,3:5]), trialtime == c(1801)), cex=3 ) +
+    geom_point(data= subset(melt(startleprops[,3:5]), trialtime == c(1831)), cex=3 ) +
+    geom_point(data= subset(melt(startleprops[,3:5]), trialtime == c(1861)), cex=3 ) +
+    geom_point(data= subset(melt(startleprops[,3:5]), trialtime == c(1891)), cex=3 ) +
+    geom_point(data= subset(melt(startleprops[,3:5]), trialtime == c(1921)), cex=3 ) +
+    ggtitle("Dark flash response") +
+    xlim(1750, 1950) +
+    ylim(0, 1) +
+    xlab("Trial Time (s)") +
+    ylab("Proportion of fish active")+ 
+    labs(colour = "Genotype") +
+    guides(alpha = "none") +
+    theme(axis.line = element_line(color='black'), 
+          panel.grid.major = element_blank(), 
+          panel.grid.minor = element_blank(), 
+          panel.background = element_blank(),
+          legend.position = "bottom") +
+    scale_color_manual(values=c("#e468a5", "black")) +
+    geom_vline(xintercept = darkflashes, col = "black", lwd = 1.5, alpha =0.1)
+
+ggsave("Combineddarkflashproportions5mm.pdf", dpi = "retina")
+```
+
+### Dark flash dataprocessing
+
+```{r dataprocessing, message=FALSE, warning=FALSE}
+## reading in trial 2 and genotyping
+# drawdatat2 <- lapply(drawdata2, function(y) y[c(-1,-2),])
+drawdata2 <- lapply(1:83, function(i) read_excel("Raw data-Startle response r21 28-8-24-Trial     2.xlsx", sheet = i, skip = 38))
+
+
+drawdatat <- c(drawdata2)
+## removing spaces from all the column names (manually for laziness)
+colunames<-c("Trialtime","Recordingtime","Xcenter","Ycenter","Area","Areachange","Elongation","Distancemoved","Velocity","Movement(Moving/Center-point)","Movement(NotMoving/Center-point)","Treated")
+drawdatat <- lapply(drawdatat, setNames, colunames)
+
+rm(drawdata1,drawdata2,drawdata3,drawdatat1,drawdatat2,drawdatat3)
+
+```
+##### Dark analysis
+
+```{r rad21 analysis}
+########################### Rad21 analysis
+## Subsetting the samples which are rad21
+r21datadark <- drawdatat[grep(pattern = "Heterozygous Allele 1/Allele 2", x = geno2v)]
+  
+## Make dataframe of velocity of r21 larvae (25 fps)
+trialtime <- r21datadark[[1]][["Trialtime"]]
+r21datadark <- lapply(r21datadark, select, Distancemoved)
+r21velocitydatadark <- as.data.frame(r21datadark)
+rownames(r21velocitydatadark) <- trialtime
+
+## Creating and applying a function to do this repeatedly:
+## rowsum(as.numeric(r21velocitydatadark[,1]), as.numeric(gl(nrow(r21velocitydatadark), 25, nrow(r21velocitydatadark))))
+## Creates a new dataframe with the sum of every 25 rows, the row names are now recording times rather then trialtimes
+
+r21velocitydatadarksec <- apply(r21velocitydatadark, 2, function(x) rowsum(as.numeric(x), as.numeric(gl(nrow(r21velocitydatadark), 25, nrow(r21velocitydatadark)))))
+r21velocitydatadarksec<- data.frame(r21velocitydatadarksec)
+
+# r21velocitydatadarksec$trialtime<-rownames(r21velocitydatadarksec)
+
+```
+
+```{r wts analysis}
+########################## WTS analysis
+## Subsetting the samples which are WTS
+wtsdatadark <- drawdatat[grep(pattern = "Homozygous Allele 1/Allele 1", x = geno2v)]
+  
+## Make dataframe of velocity of wts larvae (25 fps)
+trialtime <- wtsdatadark[[1]][["Trialtime"]]
+wtsdatadark <- lapply(wtsdatadark, select, Distancemoved)
+wtsvelocitydatadark <- as.data.frame(wtsdatadark)
+rownames(wtsvelocitydatadark) <- trialtime
+
+## Creating and applying a function to do this repeatedly:
+## rowsum(as.numeric(wtsvelocitydatadark[,1]), as.numeric(gl(nrow(wtsvelocitydatadark), 25, nrow(wtsvelocitydatadark))))
+## Creates a new dataframe with the sum of every 25 rows, the row names are now recording times rather then trialtimes
+
+wtsvelocitydatadarksec <- apply(wtsvelocitydatadark, 2, function(x) rowsum(as.numeric(x), as.numeric(gl(nrow(wtsvelocitydatadark), 25, nrow(wtsvelocitydatadark)))))
+wtsvelocitydatadarksec<- data.frame(wtsvelocitydatadarksec)
+
+# wtsvelocitydatadarksec$trialtime<-rownames(wtsvelocitydatadarksec)
+
+```
+
+
+```{r Binarise 0.5mm and proportion}
+# Binarising this data and making a dataframe out of the summed binaries to provide the number of fish moving at each time point 0.5mm/s as threshold
+# unit here is decimillimetres so 5=0.5mm
+r21velocitydatadarksecbin <- ifelse(r21velocitydatadarksec > 5,1,0)
+wtsvelocitydatadarksecbin <- ifelse(wtsvelocitydatadarksec > 5,1,0)
+
+startlecounts <- data.frame(rowSums(r21velocitydatadarksecbin), rowSums(wtsvelocitydatadarksecbin))
+startlecounts$trialtime<-rownames(startlecounts)
+colnames(startlecounts) <- c("r21","wts", "trialtime")
+
+counttablegeno2v <- table(geno2v)
+startleprops <- mutate(startlecounts, 
+                       startlecounts$r21/as.numeric(counttablegeno2v[1]), 
+                       startlecounts$wts/as.numeric(counttablegeno2v[2])
+                       ) 
+
+colnames(startleprops) <- c("r21c","wtsc","trialtime","R21","WTS")
+
+```
+
+```{r Plot, message=FALSE, warning=FALSE}
+darkflashes <- c(1800,1830,1860,1890,1920)
+
+ggplot(melt(startleprops[,3:5]), aes(x= as.numeric(trialtime)-1, y=value, group=variable, colour = variable, alpha=0.5))+
+    geom_line(lwd = 1) +
+    geom_point(data= subset(melt(startleprops[,3:5]), trialtime == c(1801)), cex=3 ) +
+    geom_point(data= subset(melt(startleprops[,3:5]), trialtime == c(1831)), cex=3 ) +
+    geom_point(data= subset(melt(startleprops[,3:5]), trialtime == c(1861)), cex=3 ) +
+    geom_point(data= subset(melt(startleprops[,3:5]), trialtime == c(1891)), cex=3 ) +
+    geom_point(data= subset(melt(startleprops[,3:5]), trialtime == c(1921)), cex=3 ) +
+    ggtitle("Dark flash response") +
+    xlim(1750, 1950) +
+    ylim(0, 1) +
+    xlab("Trial Time (s)") +
+    ylab("Proportion of fish active")+ 
+    labs(colour = "Genotype") +
+    guides(alpha = "none") +
+    theme(axis.line = element_line(color='black'), 
+          panel.grid.major = element_blank(), 
+          panel.grid.minor = element_blank(), 
+          panel.background = element_rect(fill = '#ebe8e8'),
+          legend.position = "bottom") +
+    scale_color_manual(values=c("#e468a5", "black")) +
+    geom_vline(xintercept = darkflashes, col = "white", lwd = 1.5, alpha = 0.5)
+
+ggsave("Combinedlightflashproportions5mm.pdf", dpi = "retina")
+```
+```{r}
+## baseline versus post startle activity
+startlecounts <- data.frame(
+  R21_Baseline = c(colSums(r21velocitydatalightsecbin[1:1800,])/1800,rep(NA, 88-length(colSums(r21velocitydatalightsecbin)))),
+  R21_Post_startle = c(colSums(r21velocitydatalightsecbin[c(1802:1830,1832:1860,1862:1890,1922:1950),])/145,rep(NA, 88-length(colSums(r21velocitydatalightsecbin)))),
+  
+  WTS_Baseline = c(colSums(wtsvelocitydatalightsecbin[1:1800,])/1800,rep(NA, 88-length(colSums(wtsvelocitydatalightsecbin)))),
+  WTS_Post_startle = c(colSums(wtsvelocitydatalightsecbin[c(1802:1830,1832:1860,1862:1890,1922:1950),])/145,rep(NA, 88-length(colSums(wtsvelocitydatalightsecbin))))
+)
+
+startleprops <- melt(startlecounts)
+startleprops$genotype <- c(rep("WIK", 176),rep("R21", 176),rep("WTS", 176))
+startleprops$variable <- c(rep("Baseline", 88),rep("Post Startle", 88),rep("Baseline", 88),rep("Post Startle", 88),rep("Baseline", 88),rep("Post Startle", 88))
+startleprops<- remove_missing(startleprops)
+
+
+p <-ggplot(startleprops, aes(x=factor(genotype, levels=c('WIK', 'WTS', 'R21')), y=value)) +
+  geom_violin(aes(fill = variable),
+               position = position_dodge(width = .9),
+               outlier.size = 0.3)+
+   ggtitle("Light acclimatized baseline versus post startle activity") +
+    xlab("Genotype") +
+    ylab("Proportion of seconds active")+
+   theme(axis.line = element_line(color='black'), 
+          panel.grid.major = element_blank(), 
+          panel.grid.minor = element_blank(), 
+          panel.background = element_blank(),
+          legend.position = "bottom") +
+    ylim(0,1.3) +
+  stat_summary(
+    fun = median,
+    geom = "point",
+    aes(group = interaction(genotype, variable)),
+    position = position_dodge(width = .9)
+  )
+  
+p+  
+geom_signif(
+    y_position = c(1.05, 1.05), xmin = c(0.8, 1.8), xmax = c(1.2, 2.2),
+    annotation = c("2.6e-05", "0.53"), tip_length = 0
+  ) +
+    geom_signif(
+    comparisons = list(c("S2B", "WIK")),
+    y_position = 1.2, tip_length = 0, vjust = 0.2)
+
+ggsave("base_startle_light.pdf", dpi = "retina")
+
+t.test(x=startlecounts$WIK_Baseline, y=startlecounts$WIK_Post_startle, paired = T, alternative = "two.sided")
+```
+
+
+
+```{r}
+# baseline versus post-startle activity light
+
+startlecounts <- data.frame(
+  R21_Baseline = c(colSums(r21velocitydatalightsecbin[1:1800,])/1800,rep(NA, 206-length(colSums(r21velocitydatalightsecbin)))),
+  R21_Post_startle = c(colSums(r21velocitydatalightsecbin[c(1802:1830,1832:1860,1862:1890,1922:1950),])/145,rep(NA, 206-length(colSums(r21velocitydatalightsecbin)))),
+  
+  WTS_Baseline = c(colSums(wtsvelocitydatalightsecbin[1:1800,])/1800,rep(NA, 206-length(colSums(wtsvelocitydatalightsecbin)))),
+  WTS_Post_startle = c(colSums(wtsvelocitydatalightsecbin[c(1802:1830,1832:1860,1862:1890,1922:1950),])/145,rep(NA, 206-length(colSums(wtsvelocitydatalightsecbin))))
+)
+  
+startleprops <- melt(startlecounts)
+startleprops$genotype <- c(rep("R21", 206),rep("WTS", 206))
+startleprops$variable <- c(rep("Baseline", 412),rep("Post Startle", 412))
+startleprops<- remove_missing(startleprops)
+
+
+p <-ggplot(startleprops, aes(x=factor(genotype, levels=c('WTS', 'R21')), y=value)) +
+  geom_boxplot(aes(color = variable),
+               position = position_dodge(width = .9),
+               outlier.size = 0.3)+
+   ggtitle("Dark acclimatized baseline versus post startle activity") +
+    xlab("Genotype") +
+    ylab("Proportion of seconds active")+
+   theme(axis.line = element_line(color='black'), 
+          panel.grid.major = element_blank(), 
+          panel.grid.minor = element_blank(), 
+          panel.background = element_blank(),
+          axis.title = element_text(size=16, face="bold"),
+          axis.text = element_text(size=14),
+          legend.position = "bottom") +
+    ylim(0,1.3) +
+    scale_color_manual(values=c("black", "red")) 
+  
+p+  
+geom_signif(
+    y_position = c(1.05, 1.05), xmin = c(0.8, 1.8), xmax = c(1.2, 2.2),
+    annotation = c("p = 0.2917", "p = 0.9456"), tip_length = 0) +
+    geom_signif(
+    comparisons = list(c('WTS', 'R21')),
+    y_position = 1.2, tip_length = 0, vjust = 0.2) +
+    theme(legend.text = element_text(size = 16)) +
+    theme(legend.title = element_text(size=0, face = "bold")) +
+    scale_x_discrete(labels=c('WTS', 'R21'))
+
+ggsave("base_startle_light.pdf", dpi = "retina")
+
+t.test(x=startlecounts$WTS_Baseline, y=startlecounts$WTS_Post_startle, paired = T, alternative = "two.sided")
+t.test(x=startlecounts$R21_Baseline, y=startlecounts$R21_Post_startle, paired = T, alternative = "two.sided")
+
+
+```
+
+```{r}
+# baseline versus post-startle activity dark
+
+startlecounts <- data.frame(
+  R21_Baseline = c(colSums(r21velocitydatadarksecbin[1:1800,])/1800,rep(NA, 88-length(colSums(r21velocitydatadarksecbin)))),
+  R21_Post_startle = c(colSums(r21velocitydatadarksecbin[c(1802:1830,1832:1860,1862:1890,1922:1950),])/145,rep(NA, 88-length(colSums(r21velocitydatadarksecbin)))),
+  
+  WTS_Baseline = c(colSums(wtsvelocitydatadarksecbin[1:1800,])/1800,rep(NA, 88-length(colSums(wtsvelocitydatadarksecbin)))),
+  WTS_Post_startle = c(colSums(wtsvelocitydatadarksecbin[c(1802:1830,1832:1860,1862:1890,1922:1950),])/145,rep(NA, 88-length(colSums(wtsvelocitydatadarksecbin))))
+)
+  
+startleprops <- melt(startlecounts)
+startleprops$genotype <- c(rep("R21", 176),rep("WTS", 176))
+startleprops$variable <- c(rep("Baseline", 88),rep("Post Startle", 88),rep("Baseline", 88),rep("Post Startle", 88))
+startleprops<- remove_missing(startleprops)
+
+
+p <-ggplot(startleprops, aes(x=factor(genotype, levels=c('WTS', 'R21')), y=value)) +
+  geom_boxplot(aes(color = variable),
+               position = position_dodge(width = .9),
+               outlier.size = 0.3)+
+   ggtitle("Dark acclimatized baseline versus post startle activity") +
+    xlab("Genotype") +
+    ylab("Proportion of seconds active")+
+   theme(axis.line = element_line(color='black'), 
+          panel.grid.major = element_blank(), 
+          panel.grid.minor = element_blank(), 
+          panel.background = element_blank(),
+          axis.title = element_text(size=16, face="bold"),
+          axis.text = element_text(size=14),
+          legend.position = "bottom") +
+    ylim(0,1.3) +
+    scale_color_manual(values=c("black", "red")) 
+  
+p+  
+geom_signif(
+    y_position = c(1.05, 1.05), xmin = c(0.8, 1.8), xmax = c(1.2, 2.2),
+    annotation = c("p < 2.2e-16", "p = 7.166e-15"), tip_length = 0) +
+    geom_signif(
+    comparisons = list(c('WTS', 'R21')),
+    y_position = 1.2, tip_length = 0, vjust = 0.2) +
+    theme(legend.text = element_text(size = 16)) +
+    theme(legend.title = element_text(size=0, face = "bold")) +
+    scale_x_discrete(labels=c('WTS', 'R21'))
+
+t.test(x=startlecounts$WTS_Baseline, y=startlecounts$WTS_Post_startle, paired = T, alternative = "two.sided")
+
+t.test(x=startlecounts$R21_Baseline, y=startlecounts$R21_Post_startle, paired = T, alternative = "two.sided")
+
+ggsave("base_startle_dark.pdf", dpi = "retina")
+
+```

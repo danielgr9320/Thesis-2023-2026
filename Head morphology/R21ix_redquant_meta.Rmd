@@ -1,0 +1,87 @@
+---
+title: "r21ix_morphometa"
+author: "Daniel"
+date: "2024-01-10"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(tidyverse)
+library(viridis)
+library(ggstatsplot)
+```
+
+red quant
+```{r}
+# make a list of all csvs that end in ""wts red quant raw.csv"" in the directory and subdirectories
+wtsredquantl <- list.files(pattern = "r21 wts red quant raw.csv", recursive = TRUE)
+#read them into one dataframe
+wtsredquant <- read_csv(wtsredquantl)
+colnames(wtsredquant)[colnames(wtsredquant)=='%Area'] <-"Area"
+wtsredquant <- wtsredquant$Area
+
+# make a list of all csvs that end in ""het red quant raw.csv"" in the directory and subdirectories
+hetredquantl <- list.files(pattern = "r21 het red quant raw.csv", recursive = TRUE)
+#read them into one dataframes
+hetredquant <- read_csv(hetredquantl)
+colnames(hetredquant)[colnames(hetredquant)=='%Area'] <-"Area"
+hetredquant <- hetredquant$Area
+
+# combining the two dataframes and then pivoting to te right format for violin plotting 
+
+max_ln <- max(c(length(hetredquant), length(wtsredquant))) 
+
+redquant<- data.frame("bRad21 het mutant" = c(hetredquant,rep(NA, max_ln - length(hetredquant))), 
+                      "aWild type" = c(wtsredquant,rep(NA, max_ln - length(wtsredquant))))
+
+redquant <- pivot_longer(redquant, cols = 1:2)
+## really ugly way of fixing the no special characters in column names by changing them after pivoting the table 
+redquant$name <- str_replace_all(redquant$name, ".het.mutant","+/-")
+redquant$name <- str_replace_all(redquant$name, "Wild.type","Rad21+/+")
+
+# Violin plotting
+plt2 <- ggbetweenstats(
+  data = redquant,
+  x = name,
+  y = value,
+   pairwise.display = "all",
+  p.adjust.method = "none",
+  centrality.point.args = list(size = 5, color = "black"),
+  bf.message = F,
+  point.args = list(position = ggplot2::position_jitterdodge(dodge.width = 0.6), alpha =
+    0.6, size = 3, stroke = 0, na.rm = TRUE ),
+  palette = "Dark2"
+)
+plt2 <- plt2 + 
+  # Add labels and title
+  labs(
+    x = "Genotype",
+    y = "Percent Area Alizarin Red (%)",
+    title = ""
+  ) + theme(axis.text=element_text(size=14),
+        axis.title=element_text(size=14,face="bold"))
+
+#save the plot
+
+ggsave(
+  "r21ix red quant violin.png",
+  plt2,
+  dpi = 500
+)
+```
+```{r}
+# Red Quant
+p<-ggplot(redquant, aes(x=name, y=value, fill=name)) +
+  geom_violin(trim=T, linewidth=1)
+ggsave(
+  "r21ix_redquant_violin_clean.pdf",
+  p +scale_fill_manual(values=c("grey","#e468a5"))+ theme_classic()+theme(legend.position="none") +geom_boxplot(width=0.1, linewidth=1)+ theme(axis.line = element_line(size = 1, linetype = "solid"))+labs(x = "Genotype", y= "Coverage alizarin red (%)")
+  +ylim(0,10),
+  dpi = 300,
+  units = c("mm"),
+  width = 70,
+  height = 70
+)
+```
+

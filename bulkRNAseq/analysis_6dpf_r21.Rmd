@@ -1,0 +1,183 @@
+---
+title: "analysis_6dpf_r21"
+output: html_document
+date: "2024-09-19"
+---
+
+```{r setup, include=FALSE}
+# Load required libraries
+library(DESeq2)
+library(tximport)
+library(ggplot2)
+library(vsn)
+library(pheatmap)
+library(RColorBrewer)
+library(tidyverse)
+library(KEGGREST)
+library(enrichplot)
+library(clusterProfiler)
+library(org.Dr.eg.db)
+library(DOSE)
+library(gridExtra)
+```
+
+```{r}
+setwd("/Volumes/CSDG/Daniel_Gray/BulkRNASeq/RNA_seq_6dpf_brains/Ensembl_mapped_files/")
+# Get a list of all directories (assuming each directory is a sample)
+samplea <- list.dirs(path = ".", full.names = FALSE, recursive = FALSE)
+
+samples<- samplea [c (5:8, 24:27)]
+
+# Create a data frame with sample information
+sampleTableder <- data.frame(
+  sample = samples,
+  condition = factor(sub(".*_(\\w+)_\\d+$", "\\1", samples))  # Adjust this based on your sample names
+)
+
+# Create a list of paths to the Salmon quant.sf files
+files <- file.path(samples, "quant.sf")
+names(files) <- samples
+
+# Import Salmon quantification data
+tx_to_gene <- read.csv("/Volumes/CSDG/Daniel_Gray/BulkRNASeq/RNA_seq_6dpf_brains/Ensembl_mapped_files/tx_to_gene_ens112.csv", header=FALSE, stringsAsFactors=FALSE)  # You need to provide this file
+
+txi <- tximport(files, type = "salmon", tx2gene = tx_to_gene, ignoreTxVersion=TRUE)
+
+sampleTable<-read.csv("/Volumes/CSDG/Daniel_Gray/BulkRNASeq/RNA_seq_6dpf_brains/Genome_annotation_files/sample_sheet_r21.csv",header=TRUE)
+sampleTable$batch <- c("1","2","3","4","1","2","3","4")
+
+```
+
+```{r}
+# Create DESeqDataSet object
+dds <- DESeqDataSetFromTximport(txi, sampleTable, ~condition + batch)
+dds <-DESeq(dds)
+# Perform variance stabilizing transformation
+vsd <- vst(dds, blind = TRUE)
+
+# Perform PCA
+pca_data <- plotPCA(vsd, intgroup = "condition", returnData = TRUE)
+
+# Create PCA plot
+pca_plot <- ggplot(pca_data, aes(x = PC1, y = PC2, color = condition)) +
+  geom_point(size = 3) +
+  geom_text(aes(label = name), vjust = 2, hjust = 0.5) +
+  scale_color_manual(values=c("#e468a5", "black")) +
+  theme(axis.text=element_text(size=14),
+  axis.title=element_text(size=14,face="bold"))
+
+# Save the plot
+ggsave("pca_plot_dan_r21.pdf", pca_plot, width = 8, height = 6)
+
+# Print the plot to the screen
+print(pca_plot)
+rm(pca_plot)
+attr(pca_data, "percentVar")
+```
+
+```{r}
+head(assay(vsd))
+meanSdPlot(assay(vsd))
+
+sampleDists <- dist(t(assay(vsd)))
+
+sampleDistMatrix <- as.matrix(sampleDists)
+rownames(sampleDistMatrix) <- vsd$sample
+colnames(sampleDistMatrix) <- NULL
+colors <- colorRampPalette( rev(brewer.pal(9, "Purples")) )(255)
+heatmap<- pheatmap(sampleDistMatrix,
+         clustering_distance_rows=sampleDists,
+         clustering_distance_cols=sampleDists,
+         col=colors)
+#ggsave("clustered_heatmap_r21.pdf", heatmap, width = 10, height = 8)
+rm(heatmap)
+```
+
+```{r}
+## generating DEG lists for R21
+# R21 
+res_r21 <- results(dds, contrast = c('condition', 'R21', 'WTS'))
+resSig_r21 <- subset(res_r21, padj < 0.05)
+
+resSig_r21<- resSig_r21[ order( resSig_r21$padj ), ]
+
+gene_to_ens<-read.delim("/Volumes/CSDG/Daniel_Gray/BulkRNASeq/RNA_seq_6dpf_brains/Genome_annotation_files/gene_to_ensembl_ens105.txt",header = T,row.names = 1)
+
+res_r21_anno<-merge(as.data.frame(res_r21),gene_to_ens, by = "row.names")
+
+write.csv(res_r21_anno, "sigs_R21_WTS.csv")
+```
+
+``` {r}
+#### r21 analysis
+### gene ontology analysis from michael: GO_KEGG_clusterP.R
+
+# make list order by l2fc
+original_gene_list <- resSig_r21$log2FoldChange
+names(original_gene_list) <- resSig_r21$LLgeneSymbol
+original_gene_list
+gene_list<-na.omit(original_gene_list)
+gene_list = sort(gene_list, decreasing = TRUE)
+
+```
+
+```{r}
+library(ggrepel)
+
+labelgenes <- c("stag1a","stag1b","stag2a","stag2b","smc1al","smc1a","smc3","rad21a")
+
+## Adding state to the dataframe for colour
+res_r21_anno$state<- "NO"
+res_r21_anno$state <- ifelse(res_r21_anno$padj < 0.05, "sig. Padj",res_r21_anno$state)
+res_r21_anno$state <- ifelse(res_r21_anno$padj < 0.05 & (res_r21_anno$log2FoldChange < -1 | res_r21_anno$log2FoldChange > 1), "sig. Padj & log2FC",res_r21_anno$state)
+
+## adding an extra column for genes of interest
+res_r21_anno$delabel <- ifelse(res_r21_anno$gene_name %in% labelgenes, res_r21_anno$gene_name, NA)
+
+# Theme stuff
+theme_set(theme_classic(base_size = 10) +
+            theme(
+              axis.title.y = element_text(margin = margin(0,5,0,0), size = rel(1.1), color = 'black'),
+              axis.title.x = element_text(hjust = 0.5, margin = margin(5,0,0,0), size = rel(1.1), color = 'black'),
+              plot.title = element_text(hjust = 0.5, face = "bold")
+            ))
+
+ggplot(data = res_r21_anno,
+  aes(x = log2FoldChange, y = -log10(padj), col = state, label = delabel)) +
+  geom_vline(xintercept = c(-1, 1), col = "red", linetype = 'dashed') +
+  geom_hline(yintercept = -log10(0.05), col = "red", linetype = 'dashed') + 
+  geom_point(size = 0.5) +
+  coord_cartesian(ylim = c(0, 20), xlim = c(-4, 4)) +
+  scale_x_continuous(breaks = seq(-12, 12, 2)) +
+  scale_color_manual(values = c("grey","#00AFBB", "#bb0c00" )) +
+  geom_point(data = subset(res_r21_anno, !is.na(delabel)), 
+             aes(x = log2FoldChange, y = -log10(padj)),
+             size = 1L, colour = "black") +
+  geom_text_repel(colour = "black", min.segment.length = 2) +
+  annotate("label", x = -3, y = 18, label = paste0(sum(resSig_r21$log2FoldChange<0)," Down")) +
+  annotate("label", x = 3, y = 18, label = paste0(sum(resSig_r21$log2FoldChange>0)," Up")) +
+  theme(legend.position="none")
+ggsave("Volcanor21.pdf", dpi = "retina", width = 4, height = 4, units = "in")
+
+```
+
+```{r}
+
+# plotting cohesin genes
+genestoplot <- c("stag1a","stag1b","stag2a","stag2b","smc1al","smc1a","smc3","rad21a")
+
+cohesin_genes <- res_r21_anno[res_r21_anno$gene_name %in% genestoplot,]
+
+
+plots <- list()
+ for (x in 1:8) {
+temp <- plotCounts(dds, gene = cohesin_genes$Row.names[x], intgroup = "condition", returnData = T)
+plots[[x]]<-ggplot(temp, aes(x=condition, y=count, fill = condition)) +
+  geom_boxplot(outlier.shape = NA) + # Hide outliers
+  geom_jitter(width=0.2) + # Add points
+  ggtitle(cohesin_genes$gene_name[x])+
+  scale_fill_manual(values=c("#e468a5","grey"))+theme_classic()+theme(legend.position="none")
+ }
+ggsave("cohesingenes_r21.pdf",grid.arrange(grobs=plots,ncol=2))
+```
+

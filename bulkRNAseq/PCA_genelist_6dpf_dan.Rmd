@@ -1,0 +1,277 @@
+---
+title: "PCA_genelist_6dpf_dan"
+output: html_document
+date: "2024-09-09"
+---
+
+```{r setup, include=FALSE}
+# Load required libraries
+library(DESeq2)
+library(tximport)
+library(ggplot2)
+library(vsn)
+library(pheatmap)
+library(RColorBrewer)
+library(tidyverse)
+library(KEGGREST)
+library(enrichplot)
+```
+
+```{r}
+setwd("/Volumes/CSDG/Daniel_Gray/BulkRNASeq/RNA_seq_6dpf_brains/salmon_output_last_version")
+# Get a list of all directories (assuming each directory is a sample)
+samplea <- list.dirs(path = ".", full.names = FALSE, recursive = FALSE)
+
+samples<- samplea [c (5:8, 13:16, 21:27)]
+
+# Create a data frame with sample information
+sampleTableder <- data.frame(
+  sample = samples,
+  condition = factor(sub(".*_(\\w+)_\\d+$", "\\1", samples))  # Adjust this based on your sample names
+)
+
+
+
+# Create a list of paths to the Salmon quant.sf files
+files <- file.path(samples, "quant.sf")
+names(files) <- samples
+
+# Import Salmon quantification data
+tx2gene <- read.table("/Volumes/CSDG/Daniel_Gray/BulkRNASeq/RNA_seq_6dpf_brains/Genome annotation files/gene_id_to_name.tsv", sep="\t", header=FALSE, stringsAsFactors=FALSE)  # You need to provide this file
+txi <- tximport(files, type = "salmon", tx2gene = tx2gene)
+
+sampleTable<-read.csv("/Volumes/CSDG/Daniel_Gray/BulkRNASeq/RNA_seq_6dpf_brains/Genome annotation files/sample_sheet_danonly.csv",header=TRUE)
+
+```
+
+```{r}
+# Create DESeqDataSet object
+dds <- DESeqDataSetFromTximport(txi, sampleTable, ~condition)
+dds <-DESeq(dds)
+# Perform variance stabilizing transformation
+vsd <- vst(dds, blind = TRUE)
+
+# Perform PCA
+pca_data <- plotPCA(vsd, intgroup = "condition", returnData = TRUE)
+
+# Create PCA plot
+pca_plot <- ggplot(pca_data, aes(x = PC1, y = PC2, color = condition)) +
+  geom_point(size = 3) +
+  geom_text(aes(label = name), vjust = 2, hjust = 0.5) +
+  theme_minimal() +
+  scale_color_manual(values=c("#7030A0", "#9999FF", "dark grey", "black" , "navy")) +
+  ggtitle("PCA of RNA-seq Samples")
+
+# Save the plot
+ggsave("pca_plot_dan.png", pca_plot, width = 10, height = 8)
+
+# Print the plot to the screen
+print(pca_plot)
+rm(pca_plot)
+```
+
+
+```{r}
+head(assay(vsd))
+meanSdPlot(assay(vsd))
+
+sampleDists <- dist(t(assay(vsd)))
+
+sampleDistMatrix <- as.matrix(sampleDists)
+rownames(sampleDistMatrix) <- paste(vsd$condition, vsd$type, sep="-")
+colnames(sampleDistMatrix) <- NULL
+colors <- colorRampPalette( rev(brewer.pal(9, "Purples")) )(255)
+heatmap<- pheatmap(sampleDistMatrix,
+         clustering_distance_rows=sampleDists,
+         clustering_distance_cols=sampleDists,
+         col=colors)
+ggsave("clustered_heatmap_dan.png", heatmap, width = 10, height = 8)
+rm(heatmap)
+```
+
+```{r}
+write.csv(counts(dds), "counts_daniel.csv")
+
+## generating DEG lists for R21 and S2b
+# R21 
+res_r21 <- results(dds, contrast = c('condition', 'R21', 'WTS'))
+resSig_r21 <- subset(res_r21, padj < 0.1)
+
+head(resSig_r21[ order( resSig_r21$log2FoldChange ), ])
+head(resSig_r21[ order( -resSig_r21$log2FoldChange ), ])
+topGene <- rownames(resSig_r21)[which.min(resSig_r21$padj)]
+
+
+# S2b
+ress2b <- results(dds, contrast = c('condition', "S2B", 'Wik_D'))
+resSig_s2b <- subset(ress2b, padj < 0.1)
+
+head(resSig_s2b[ order( resSig_s2b$log2FoldChange ), ])
+head(resSig_s2b[ order( -resSig_s2b$log2FoldChange ), ])
+topGene <- rownames(resSig_s2b)[which.min(resSig_s2b$padj)]
+
+
+## annotating with gene names and saving .csv of DEG
+gene_annotations <- read.csv("/Volumes/CSDG/Daniel_Gray/BulkRNASeq/RNA_seq_6dpf_brains/Genome annotation files/GTF_gene_id_to_name.csv", 
+                             header = TRUE, 
+                             stringsAsFactors = FALSE)
+# R21
+geneIDs <- rownames(resSig_r21)
+gene_name_lookup <- setNames(gene_annotations$gene_name, gene_annotations$gene_id)
+resSig_r21
+resSig_r21$LLgeneSymbol <- gene_name_lookup[rownames(resSig_r21)]
+write.csv(resSig_r21, "sigs_R21_WTS.csv")
+
+#S2b
+geneIDs <- rownames(resSig_s2b)
+gene_name_lookup <- setNames(gene_annotations$gene_name, gene_annotations$gene_id)
+resSig_s2b
+resSig_s2b$LLgeneSymbol <- gene_name_lookup[rownames(resSig_s2b)]
+write.csv(resSig_s2b, "sigs_S2B_WIK.csv")
+
+```
+
+
+``` {r}
+#### s2b analysis
+### gene ontology analysis from michael: GO_KEGG_clusterP.R
+
+# make list order by l2fc
+original_gene_list <- resSig_s2b$log2FoldChange
+names(original_gene_list) <- resSig_s2b$LLgeneSymbol
+original_gene_list
+gene_list<-na.omit(original_gene_list)
+gene_list = sort(gene_list, decreasing = TRUE)
+
+
+#use Clusterprofiler
+
+library(clusterProfiler)
+library(org.Dr.eg.db)
+library(DOSE)
+
+
+gse <- gseGO(geneList=gene_list, 
+             ont ="ALL", 
+             keyType = "SYMBOL", 
+             nPerm = 10000, 
+             minGSSize = 3, 
+             maxGSSize = 800, 
+             pvalueCutoff = 0.05, 
+             verbose = TRUE, 
+             OrgDb = org.Dr.eg.db , 
+             pAdjustMethod = "none")
+
+pdf("S2BGSEAplots.pdf")
+
+dotplot(gse, showCategory=10, split=".sign", font.size = 6) + facet_grid(.~.sign)
+
+emapplot(pairwise_termsim(gse), cex.params = list(category_label = 0.5, line = 0.5, label_words_n =3, max.overlaps = 0))
+
+cnetplot(gse, categorySize="pvalue", foldChange=gene_list, showCategory = 7, cex.params = list(category_label = 0.6, gene_label = 0.5, line = 0.5, label_words_n =3, max.overlaps = 0))
+
+ridgeplot(gse, showCategory = 20, fill = "p.adjust",
+  core_enrichment = F,
+  label_format = 50) + labs(x = "enrichment distribution")
+
+
+gseaplot(gse, by = "all", title = gse$Description[7], geneSetID = 7, font.size = 6)
+
+### KEGG analysis
+# Convert gene IDs for gseKEGG function
+# We will lose some genes here because not all IDs will be converted
+ids<-bitr(names(original_gene_list), fromType = "SYMBOL", toType = "ENTREZID", OrgDb=org.Dr.eg.db)
+# remove duplicate IDS (here I use "ENSEMBL", but it should be whatever was selected as keyType)
+dedup_ids = ids[!duplicated(ids[c("SYMBOL")]),]
+dedup_ids
+# Create a new dataframe df2 which has only the genes which were successfully mapped using the bitr function above
+sum(duplicated(resSig_s2b$LLgeneSymbol))
+resSig_s2b2 <- resSig_s2b[!duplicated(resSig_s2b[c("LLgeneSymbol")]),]
+df2 = resSig_s2b2[resSig_s2b2$LLgeneSymbol %in% dedup_ids$SYMBOL,]
+sum(duplicated(df2$LLgeneSymbol))
+# Create a new column in df2 with the corresponding ENTREZ IDs
+df2$Y = dedup_ids$ENTREZID
+# Create a vector of the gene universe
+kegg_gene_list <- df2$log2FoldChange
+# Name vector with ENTREZ ids
+names(kegg_gene_list) <- df2$Y
+# omit any NA values 
+kegg_gene_list<-na.omit(kegg_gene_list)
+# sort the list in decreasing order (required for clusterProfiler)
+kegg_gene_list = sort(kegg_gene_list, decreasing = TRUE)
+
+kegg_organism = "dre"
+
+pdf("S2BKEGGplots.pdf")
+
+kk2 <- gseKEGG(geneList     = kegg_gene_list,
+               organism     = kegg_organism,
+               nPerm        = 10000,
+               minGSSize    = 1,
+               maxGSSize    = 500,
+               pvalueCutoff = 0.05,
+               pAdjustMethod = "none",
+               keyType       = "ncbi-geneid")
+
+
+dotplot(kk2, showCategory = 10, title = "Enriched Pathways" , split=".sign") + facet_grid(.~.sign)
+emapplot(pairwise_termsim(kk2))
+
+cnetplot(kk2, categorySize="pvalue", foldChange=kegg_gene_list, showCategory = 6, cex.params = list(category_label = 0.6, gene_label = 0.5, line = 0.5, label_words_n =3, max.overlaps = 0))
+
+```
+
+``` {r}
+#### r21 analysis
+### gene ontology analysis from michael: GO_KEGG_clusterP.R
+
+# make list order by l2fc
+original_gene_list <- resSig_r21$log2FoldChange
+names(original_gene_list) <- resSig_r21$LLgeneSymbol
+original_gene_list
+gene_list<-na.omit(original_gene_list)
+gene_list = sort(gene_list, decreasing = TRUE)
+
+#use Clusterprofiler
+
+gse <- gseGO(geneList=gene_list, 
+             ont ="ALL", 
+             keyType = "SYMBOL", 
+             nPerm = 10000, 
+             minGSSize = 3, 
+             maxGSSize = 800, 
+             pvalueCutoff = 0.05, 
+             verbose = TRUE, 
+             OrgDb = org.Dr.eg.db , 
+             pAdjustMethod = "none")
+
+original_gene_list
+### KEGG analysis
+# Convert gene IDs for gseKEGG function
+# We will lose some genes here because not all IDs will be converted
+ids<-bitr(names(original_gene_list), fromType = "SYMBOL", toType = "ENTREZID", OrgDb=org.Dr.eg.db)
+# remove duplicate IDS (here I use "ENSEMBL", but it should be whatever was selected as keyType)
+dedup_ids = ids[!duplicated(ids[c("SYMBOL")]),]
+dedup_ids
+
+# Create a new dataframe df2 which has only the genes which were successfully mapped using the bitr function above
+sum(duplicated(resSig_r21$LLgeneSymbol))
+resSig_r212 <- resSig_r21[!duplicated(resSig_r21[c("LLgeneSymbol")]),]
+df2 = resSig_r212[resSig_r212$LLgeneSymbol %in% dedup_ids$SYMBOL,]
+sum(duplicated(df2$LLgeneSymbol))
+# Create a new column in df2 with the corresponding ENTREZ IDs
+df2$Y = dedup_ids$ENTREZID
+# Create a vector of the gene universe
+kegg_gene_list <- df2$log2FoldChange
+# Name vector with ENTREZ ids
+names(kegg_gene_list) <- df2$Y
+# omit any NA values 
+kegg_gene_list<-na.omit(kegg_gene_list)
+# sort the list in decreasing order (required for clusterProfiler)
+kegg_gene_list = sort(kegg_gene_list, decreasing = TRUE)
+head(kegg_gene_list)
+
+query <- keggGet(c( "dre:322275", "dre:101887158", "dre:569583", "dre:101885134",   "dre:101882267"))
+query[[1]]$NAME
+
+```

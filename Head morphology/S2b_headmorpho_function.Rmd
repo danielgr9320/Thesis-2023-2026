@@ -1,0 +1,75 @@
+---
+title: "S2b_headmorpho_function"
+output: html_document
+date: "2024-04-11"
+---
+
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(tidyverse)
+library(viridis)
+library(ggstatsplot)
+```
+
+head width
+```{r}
+
+morphoplot <- function(measure){
+  
+# make a list of all csvs that end in ""hom head width raw.csv"" in the directory and subdirectories
+homheadwidthl <- list.files(pattern = "hom head width raw.csv$", recursive = TRUE)
+#read them into one dataframes
+homheadwidth <- read_csv(homheadwidthl)
+homheadwidth <- homheadwidth$Length
+
+# make a list of all csvs that end in ""wts head width raw.csv"" in the directory and subdirectories
+wtsheadwidthl <- list.files(pattern = "wts head width raw.csv$", recursive = TRUE)
+#read them into one dataframe
+wtsheadwidth <- read_csv(wtsheadwidthl)
+wtsheadwidth <- wtsheadwidth$Length
+
+# make a list of all csvs that end in ""het head width raw.csv"" in the directory and subdirectories
+hetheadwidthl <- list.files(pattern = "het head width raw.csv$", recursive = TRUE)
+#read them into one dataframes
+hetheadwidth <- read_csv(hetheadwidthl) 
+hetheadwidth <- hetheadwidth$Length
+
+# combining the two dataframes and then pivoting to te right format for violin plotting 
+
+
+max_ln <- max(c(length(homheadwidth), length(hetheadwidth), length(wtsheadwidth))) 
+headwidth<- data.frame("Stag2b hom mutant" = c(homheadwidth,rep(NA, max_ln - length(homheadwidth))), 
+                      "Stag2b het mutant" = c(hetheadwidth,rep(NA, max_ln - length(hetheadwidth))), 
+                      "Wild type" = c(wtsheadwidth,rep(NA, max_ln - length(wtsheadwidth))))
+headwidth <- pivot_longer(headwidth, cols = 1:3)
+## really ugly way of fixing the no special characters in column names by changing them after pivoting the table 
+headwidth$name <- str_replace_all(headwidth$name, ".hom.mutant","-/-")
+headwidth$name <- str_replace_all(headwidth$name, ".het.mutant","+/-")
+headwidth$name <- str_replace_all(headwidth$name, "Wild.type","Stag2b+/+")
+
+# Violin plotting
+plt2 <- ggbetweenstats(
+  data = headwidth,
+  x = name,
+  y = value
+)
+plt2 <- plt2 + 
+  # Add labels and title
+  labs(
+    x = "Genotype",
+    y = "Head width (µm)",
+    title = ""
+  ) + theme(axis.text=element_text(size=12),
+        axis.title=element_text(size=14,face="bold"))
+
+#save the plot
+
+ggsave(
+  "ggtest.png",
+  plt2,
+  dpi = 150
+)
+}
+
+```

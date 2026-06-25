@@ -1,0 +1,434 @@
+---
+title: "s2bix_morphometa"
+author: "Daniel"
+date: "2024-01-10"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(tidyverse)
+library(viridis)
+library(ggstatsplot)
+```
+
+head width
+```{r}
+# make a list of all csvs that end in ""hom head width raw.csv"" in the directory and subdirectories
+homheadwidthl <- list.files(pattern = "s2b hom head width raw.csv$", recursive = TRUE)
+#read them into one dataframes
+homheadwidth <- read_csv(homheadwidthl)
+homheadwidth <- homheadwidth$Length
+
+# make a list of all csvs that end in ""wts head width raw.csv"" in the directory and subdirectories
+wtsheadwidthl <- list.files(pattern = "s2b wts head width raw.csv", recursive = TRUE)
+#read them into one dataframe
+wtsheadwidth <- read_csv(wtsheadwidthl)
+wtsheadwidth <- wtsheadwidth$Length
+
+# make a list of all csvs that end in ""het head width raw.csv"" in the directory and subdirectories
+hetheadwidthl <- list.files(pattern = "s2b het head width raw.csv$", recursive = TRUE)
+#read them into one dataframes
+hetheadwidth <- read_csv(hetheadwidthl) 
+hetheadwidth <- hetheadwidth$Length
+
+# combining the two dataframes and then pivoting to te right format for violin plotting 
+
+
+max_ln <- max(c(length(homheadwidth), length(hetheadwidth), length(wtsheadwidth))) 
+headwidth<- data.frame("cStag2b hom mutant" = c(homheadwidth,rep(NA, max_ln - length(homheadwidth))), 
+                      "bStag2b het mutant" = c(hetheadwidth,rep(NA, max_ln - length(hetheadwidth))), 
+                      "aWild type" = c(wtsheadwidth,rep(NA, max_ln - length(wtsheadwidth))))
+headwidth <- pivot_longer(headwidth, cols = 1:3)
+## really ugly way of fixing the no special characters in column names by changing them after pivoting the table 
+headwidth$name <- str_replace_all(headwidth$name, ".hom.mutant","-/-")
+headwidth$name <- str_replace_all(headwidth$name, ".het.mutant","+/-")
+headwidth$name <- str_replace_all(headwidth$name, "Wild.type","Stag2b+/+")
+
+# Violin plotting
+plt2 <- ggbetweenstats(
+  data = headwidth,
+  x = name,
+  y = value,
+  pairwise.display = "all",
+  p.adjust.method = "none",
+  centrality.point.args = list(size = 5, color = "black"),
+  bf.message = F,
+  point.args = list(position = ggplot2::position_jitterdodge(dodge.width = 0.6), alpha =
+    0.6, size = 3, stroke = 0, na.rm = TRUE ),
+  palette = "Dark2"
+)
+plt2 <- plt2 + 
+  # Add labels and title
+  labs(
+    x = "Genotype",
+    y = "Head width (µm)",
+    title = ""
+  ) + theme(axis.text=element_text(size=14),
+        axis.title=element_text(size=14,face="bold"))
+
+#save the plot
+
+ggsave(
+  "s2bix head width violin.png",
+  plt2,
+  dpi = 150
+)
+```
+
+nose to fin length
+```{r}
+# make a list of all csvs that end in ""hom nose to fin length raw.csv"" in the directory and subdirectories
+homnosetofinlengthl <- list.files(pattern = "s2b hom nose to fin length raw.csv$", recursive = TRUE)
+#read them into one dataframes
+homnosetofinlength <- read_csv(homnosetofinlengthl)
+homnosetofinlength <- homnosetofinlength$Length
+
+# make a list of all csvs that end in ""wts nose to fin length raw.csv"" in the directory and subdirectories
+wtsnosetofinlengthl <- list.files(pattern = "s2b wts nose to fin length raw.csv$", recursive = TRUE)
+#read them into one dataframe
+wtsnosetofinlength <- read_csv(wtsnosetofinlengthl)
+wtsnosetofinlength <- wtsnosetofinlength$Length
+
+# make a list of all csvs that end in ""het nose to fin length raw.csv"" in the directory and subdirectories
+hetnosetofinlengthl <- list.files(pattern = "s2b het nose to fin length raw.csv$", recursive = TRUE)
+#read them into one dataframes
+hetnosetofinlength <- read_csv(hetnosetofinlengthl) 
+hetnosetofinlength <- hetnosetofinlength$Length
+
+# combining the two dataframes and then pivoting to te right format for violin plotting 
+
+
+max_ln <- max(c(length(homnosetofinlength), length(hetnosetofinlength), length(wtsnosetofinlength))) 
+nosetofinlength<- data.frame("cStag2b hom mutant" = c(homnosetofinlength,rep(NA, max_ln - length(homnosetofinlength))), 
+                      "bStag2b het mutant" = c(hetnosetofinlength,rep(NA, max_ln - length(hetnosetofinlength))), 
+                      "aWild type" = c(wtsnosetofinlength,rep(NA, max_ln - length(wtsnosetofinlength))))
+nosetofinlength <- pivot_longer(nosetofinlength, cols = 1:3)
+## really ugly way of fixing the no special characters in column names by changing them after pivoting the table 
+nosetofinlength$name <- str_replace_all(nosetofinlength$name, ".hom.mutant","-/-")
+nosetofinlength$name <- str_replace_all(nosetofinlength$name, ".het.mutant","+/-")
+nosetofinlength$name <- str_replace_all(nosetofinlength$name, "Wild.type","Stag2b+/+")
+
+# Violin plotting
+plt2 <- ggbetweenstats(
+  data = nosetofinlength,
+  x = name,
+  y = value,
+  pairwise.display = "all",
+  p.adjust.method = "none",
+  centrality.point.args = list(size = 5, color = "black"),
+  bf.message = F,
+  point.args = list(position = ggplot2::position_jitterdodge(dodge.width = 0.6), alpha =
+    0.6, size = 3, stroke = 0, na.rm = TRUE ),
+  palette = "Dark2"
+)
+plt2 <- plt2 + 
+  # Add labels and title
+  labs(
+    x = "Genotype",
+    y = "Nose to fin length (µm)",
+    title = "") + 
+  theme(axis.text=element_text(size=14),axis.title=element_text(size=14,face="bold")) +
+  scale_x_discrete(labels=c("Wild type\n(n=30)", "Stag2b (+/-)\n(n=91)", "Stag2b (-/-)\n(n=54)"))
+
+#save the plot
+
+ggsave(
+  "s2bix nose to fin length violin.png",
+  plt2,
+  dpi = 150
+)
+```
+
+inter eye distance
+```{r}
+# make a list of all csvs that end in ""hom inter eye distance raw.csv"" in the directory and subdirectories
+homintereyedistancel <- list.files(pattern = "s2b hom inter eye distance raw.csv$", recursive = TRUE)
+#read them into one dataframes
+homintereyedistance <- read_csv(homintereyedistancel)
+homintereyedistance <- homintereyedistance$Length
+
+# make a list of all csvs that end in ""wts inter eye distance raw.csv"" in the directory and subdirectories
+wtsintereyedistancel <- list.files(pattern = "s2b wts inter eye distance raw.csv$", recursive = TRUE)
+#read them into one dataframe
+wtsintereyedistance <- read_csv(wtsintereyedistancel)
+wtsintereyedistance <- wtsintereyedistance$Length
+
+# make a list of all csvs that end in ""het inter eye distance raw.csv"" in the directory and subdirectories
+hetintereyedistancel <- list.files(pattern = "s2b het inter eye distance raw.csv$", recursive = TRUE)
+#read them into one dataframes
+hetintereyedistance <- read_csv(hetintereyedistancel) 
+hetintereyedistance <- hetintereyedistance$Length
+
+# combining the two dataframes and then pivoting to te right format for violin plotting 
+
+
+max_ln <- max(c(length(homintereyedistance), length(hetintereyedistance), length(wtsintereyedistance))) 
+intereyedistance<- data.frame("cStag2b hom mutant" = c(homintereyedistance,rep(NA, max_ln - length(homintereyedistance))), 
+                      "bStag2b het mutant" = c(hetintereyedistance,rep(NA, max_ln - length(hetintereyedistance))), 
+                      "aWild type" = c(wtsintereyedistance,rep(NA, max_ln - length(wtsintereyedistance))))
+intereyedistance <- pivot_longer(intereyedistance, cols = 1:3)
+## really ugly way of fixing the no special characters in column names by changing them after pivoting the table 
+intereyedistance$name <- str_replace_all(intereyedistance$name, ".hom.mutant","-/-")
+intereyedistance$name <- str_replace_all(intereyedistance$name, ".het.mutant","+/-")
+intereyedistance$name <- str_replace_all(intereyedistance$name, "Wild.type","Stag2b+/+")
+
+# Violin plotting
+plt2 <- ggbetweenstats(
+  data = intereyedistance,
+  x = name,
+  y = value,
+  pairwise.display = "all",
+  p.adjust.method = "none",
+  centrality.point.args = list(size = 5, color = "black"),
+  bf.message = F,
+  point.args = list(position = ggplot2::position_jitterdodge(dodge.width = 0.6), alpha =
+    0.6, size = 3, stroke = 0, na.rm = TRUE ),
+  palette = "Dark2"
+)
+plt2 <- plt2 + 
+  # Add labels and title
+  labs(
+    x = "Genotype",
+    y = "Inter eye distance (µm)",
+    title = ""
+  ) + theme(axis.text=element_text(size=14),
+        axis.title=element_text(size=14,face="bold"))+
+  scale_x_discrete(labels=c("Wild type\n(n=30)", "Stag2b (+/-)\n(n=91)", "Stag2b (-/-)\n(n=54)"))
+
+#save the plot
+
+ggsave(
+  "s2bix inter eye distance violin.png",
+  plt2,
+  dpi = 150
+)
+```
+
+Head Ratio
+```{r}
+headratio <- intereyedistance
+headratio$value <- intereyedistance$value / headwidth$value
+
+headratiotrim <- headratio[-142,]
+
+# Violin plotting
+plt2 <- ggbetweenstats(
+  data = headratiotrim,
+  x = name,
+  y = value,
+  pairwise.display = "all",
+  p.adjust.method = "none",
+  centrality.point.args = list(size = 5, color = "black"),
+  bf.message = F,
+  point.args = list(position = ggplot2::position_jitterdodge(dodge.width = 0.6), alpha =
+    0.6, size = 3, stroke = 0, na.rm = TRUE ),
+  palette = "Dark2"
+)
+
+plt2 <- plt2 + 
+  # Add labels and title
+  labs(
+    x = "Genotype",
+    y = "Inter eye ditance : head width ratio",
+    title = ""
+  ) + theme(axis.text=element_text(size=14),
+        axis.title=element_text(size=14,face="bold"))+
+  scale_x_discrete(labels=c("Wild type\n(n=30)", "Stag2b (+/-)\n(n=91)", "Stag2b (-/-)\n(n=54)"))
+
+#save the plot
+
+ggsave(
+  "s2bix head ratio violin.png",
+  plt2,
+  dpi = 150
+)
+```
+
+Head Ratio
+```{r}
+headlengthratio <- intereyedistance
+headlengthratio$value <- intereyedistance$value / nosetofinlength$value
+
+# Violin plotting
+plt2 <- ggbetweenstats(
+  data = headlengthratio,
+  x = name,
+  y = value,
+  pairwise.display = "all",
+  p.adjust.method = "none",
+  centrality.point.args = list(size = 5, color = "black"),
+  bf.message = F,
+  point.args = list(position = ggplot2::position_jitterdodge(dodge.width = 0.6), alpha =
+    0.6, size = 3, stroke = 0, na.rm = TRUE ),
+  palette = "Dark2"
+)
+plt2 <- plt2 + 
+  # Add labels and title
+  labs(
+    x = "Genotype",
+    y = "Inter eye ditance : Nose to fin length ratio",
+    title = ""
+  ) + theme(axis.text=element_text(size=14),
+        axis.title=element_text(size=14,face="bold"))+
+  scale_x_discrete(labels=c("Wild type\n(n=30)", "Stag2b (+/-)\n(n=91)", "Stag2b (-/-)\n(n=54)"))
+
+#save the plot
+
+ggsave(
+  "s2bix head length ratio violin.png",
+  plt2,
+  dpi = 150
+)
+```
+
+MPQ angle
+```{r}
+# make a list of all csvs that end in ""hom mpq angle raw.csv"" in the directory and subdirectories
+hommpqanglel <- list.files(pattern = "s2b hom MPQ angle raw.csv$", recursive = TRUE)
+#read them into one dataframes
+hommpqangle <- map_dfr(hommpqanglel, ~read.csv(.x)[,-c(1)])
+hommpqangle <- hommpqangle$Angle
+
+# make a list of all csvs that end in ""wts mpq angle raw.csv"" in the directory and subdirectories
+wtsmpqanglel <- list.files(pattern = "s2b wts MPQ angle raw.csv$", recursive = TRUE)
+#read them into one dataframe
+wtsmpqangle <- map_dfr(wtsmpqanglel, ~read.csv(.x)[,-c(1)])
+wtsmpqangle <- wtsmpqangle$Angle
+
+# make a list of all csvs that end in ""het mpq angle raw.csv"" in the directory and subdirectories
+hetmpqanglel <- list.files(pattern = "s2b het MPQ angle raw.csv$", recursive = TRUE)
+#read them into one dataframes
+hetmpqangle <- map_dfr(hetmpqanglel, ~read.csv(.x)[,-c(1)])
+hetmpqangle <- hetmpqangle$Angle
+
+# combining the two dataframes and then pivoting to te right format for violin plotting 
+
+
+max_ln <- max(c(length(hommpqangle), length(hetmpqangle), length(wtsmpqangle))) 
+mpqangle<- data.frame("cStag2b hom mutant" = c(hommpqangle,rep(NA, max_ln - length(hommpqangle))), 
+                      "bStag2b het mutant" = c(hetmpqangle,rep(NA, max_ln - length(hetmpqangle))), 
+                      "aWild type" = c(wtsmpqangle,rep(NA, max_ln - length(wtsmpqangle))))
+mpqangle <- pivot_longer(mpqangle, cols = 1:3)
+## really ugly way of fixing the no special characters in column names by changing them after pivoting the table 
+mpqangle$name <- str_replace_all(mpqangle$name, ".hom.mutant","-/-")
+mpqangle$name <- str_replace_all(mpqangle$name, ".het.mutant","+/-")
+mpqangle$name <- str_replace_all(mpqangle$name, "Wild.type","Stag2b+/+")
+
+# Violin plotting
+plt2 <- ggbetweenstats(
+  data = mpqangle,
+  x = name,
+  y = value,
+  pairwise.display = "all",
+  p.adjust.method = "none",
+  centrality.point.args = list(size = 5, color = "black"),
+  bf.message = F,
+  point.args = list(position = ggplot2::position_jitterdodge(dodge.width = 0.6), alpha =
+    0.6, size = 3, stroke = 0, na.rm = TRUE ),
+  palette = "Dark2"
+)
+plt2 <- plt2 + 
+  # Add labels and title
+  labs(
+    x = "Genotype",
+    y = "MPQ angle°",
+    title = ""
+  ) + theme(axis.text=element_text(size=14),
+        axis.title=element_text(size=14,face="bold"))+
+  scale_x_discrete(labels=c("Wild type\n(n=30)", "Stag2b (+/-)\n(n=91)", "Stag2b (-/-)\n(n=54)"))
+
+#save the plot
+
+ggsave(
+  "s2bix mpq angle violin.png",
+  plt2,
+  dpi = 150
+)
+plt2
+```
+
+
+```{r}
+# head width
+p<-ggplot(headwidth, aes(x=name, y=value, fill=name)) +
+  geom_violin(trim=T, linewidth=1)
+ggsave(
+  "s2bix_double_meta_head_width_violin_clean.pdf",
+  p +scale_fill_manual(values=c("grey","#99ffff","#9999FF"))+ theme_classic()+theme(legend.position="none") +geom_boxplot(width=0.1, linewidth=1)+ theme(axis.line = element_line(size = 1, linetype = "solid"))+labs(x = "Genotype", y= "Head width (µm)")
++ylim(400,600),
+  dpi = 300,
+  units = c("mm"),
+  width = 70,
+  height = 70
+)
+
+# nose to fin length
+p<-ggplot(nosetofinlength, aes(x=name, y=value, fill=name)) +
+  geom_violin(trim=T, linewidth=1)
+ggsave(
+  "s2bix_double_meta_head_length_violin_clean.pdf",
+  p +scale_fill_manual(values=c("grey","#99ffff","#9999FF"))+ theme_classic()+theme(legend.position="none") +geom_boxplot(width=0.1, linewidth=1)+ theme(axis.line = element_line(size = 1, linetype = "solid"))+labs(x = "Genotype", y= "Head length (µm)")
+  +ylim(550,750),
+  dpi = 300,
+  units = c("mm"),
+  width = 70,
+  height = 70
+)
+
+# inter eye distance
+p<-ggplot(intereyedistance, aes(x=name, y=value, fill=name)) +
+  geom_violin(trim=T, linewidth=1)
+ggsave(
+  "s2bix_double_meta_inter_eye_distance_violin_clean.pdf",
+  p +scale_fill_manual(values=c("grey","#99ffff","#9999FF"))+ theme_classic()+theme(legend.position="none") +geom_boxplot(width=0.1, linewidth=1)+ theme(axis.line = element_line(size = 1, linetype = "solid"))+labs(x = "Genotype", y= "Inter eye distance (µm)")
+  +ylim(50,200),
+  dpi = 300,
+  units = c("mm"),
+  width = 70,
+  height = 70
+)
+```
+
+
+```{r}
+# head width ratio (with inter eye distance)
+p<-ggplot(headratio, aes(x=name, y=value, fill=name)) +
+  geom_violin(trim=T, linewidth=1)
+ggsave(
+  "s2bix_double_meta_head_width_ratio_violin_clean.pdf",
+  p +scale_fill_manual(values=c("grey","#99ffff","#9999FF"))+ theme_classic()+theme(legend.position="none") +geom_boxplot(width=0.1, linewidth=1)+ theme(axis.line = element_line(size = 1, linetype = "solid"))+labs(x = "Genotype", y= "Head width ratio")
++ylim(0.1,0.4),
+  dpi = 300,
+  units = c("mm"),
+  width = 70,
+  height = 70
+)
+
+# nose to fin length ratio (with inter eye distance)
+p<-ggplot(headlengthratio, aes(x=name, y=value, fill=name)) +
+  geom_violin(trim=T, linewidth=1)
+ggsave(
+  "s2bix_double_meta_head_length_ratio_violin_clean.pdf",
+  p +scale_fill_manual(values=c("grey","#99ffff","#9999FF"))+ theme_classic()+theme(legend.position="none") +geom_boxplot(width=0.1, linewidth=1)+ theme(axis.line = element_line(size = 1, linetype = "solid"))+labs(x = "Genotype", y= "Head length ratio")
+  +ylim(0.1,0.4),
+  dpi = 300,
+  units = c("mm"),
+  width = 70,
+  height = 70
+)
+
+# MPQ angle
+p<-ggplot(mpqangle, aes(x=name, y=value, fill=name)) +
+  geom_violin(trim=T, linewidth=1)
+ggsave(
+  "s2bix_double_meta_mpq_violin_clean.pdf",
+  p +scale_fill_manual(values=c("grey","#99ffff","#9999FF"))+ theme_classic()+theme(legend.position="none") +geom_boxplot(width=0.1, linewidth=1)+ theme(axis.line = element_line(size = 1, linetype = "solid"))+labs(x = "Genotype", y= "MPQ angle")
+  +ylim(35,45),
+  dpi = 300,
+  units = c("mm"),
+  width = 70,
+  height = 70
+)
+```
+
